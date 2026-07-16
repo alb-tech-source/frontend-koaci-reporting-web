@@ -39,8 +39,8 @@ export interface AdminNavItem {
 }
 
 export const defaultAdminNav: AdminNavItem[] = [
-  { to: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/admin/investor", label: "Investor", icon: Users },
+  { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/admin/investor-management", label: "Investor", icon: Users },
   { to: "/admin/portofolio", label: "Portofolio", icon: Wallet },
   { to: "/admin/laporan", label: "Laporan", icon: FileText },
   { to: "/admin/pengaturan", label: "Pengaturan", icon: Settings },
@@ -117,7 +117,6 @@ function AdminSidebar({
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const pathname = usePathname();
-  <Link href="/investors">Investor</Link>;
 
   const isActive = (to: string) =>
     to === "/admin" ? pathname === "/admin" : pathname.startsWith(to);

@@ -1,30 +1,31 @@
-// src/app/layout.tsx
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+// Anda bisa mengganti font 'Inter' dengan font lain dari google fonts jika mau
+import { Inter } from "next/font/google"; 
 import "./globals.css";
-import { Providers } from "./providers";
 
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  variable: "--font-sans",
-});
+// Jika Anda sudah memiliki file providers.tsx (misal untuk React Query), uncomment baris di bawah:
+// import { Providers } from "./providers";
+
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Koaci Reporting App",
-  description: "Platform pelaporan investasi syariah untuk investor dan admin.",
-  openGraph: {
-    title: "Koaci Reporting App",
-    description: "Platform pelaporan investasi syariah B2B/B2C.",
-    type: "website",
-  },
+  description: "Sistem pelaporan investasi syariah PT Koaci Sinergi Indonesia",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="id" className={inter.variable}>
-      <body>
-        <Providers>{children}</Providers>
+    <html lang="id" suppressHydrationWarning>
+      <body className={inter.className}>
+        {/* Jika Anda punya Providers, bungkus children seperti ini: */}
+        {/* <Providers>{children}</Providers> */}
+        
+        {/* Jika tidak, cukup render children langsung: */}
+        {children}
       </body>
     </html>
   );

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 
-import { AdminShell } from "@/components/layout/AdminShell";
 import { StatsGrid } from "@/features/admin-dashboard/StatsGrid";
 import { PerformanceChart } from "@/features/admin-dashboard/PerformanceChart";
 import { ActivityFeed } from "@/features/admin-dashboard/ActivityFeed";
@@ -25,7 +24,6 @@ export default async function DashboardPage() {
   const activityData = await fetchRecentActivity();
 
   return (
-    <AdminShell>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
@@ -46,6 +44,5 @@ export default async function DashboardPage() {
           </div>
         </div>
       </div>
-    </AdminShell>
   );
 }
