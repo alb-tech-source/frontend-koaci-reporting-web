@@ -14,7 +14,7 @@ export function ActivityFeed({
   items,
   title = "Ringkasan Aktivitas Sistem",
   description = "5 aktivitas terbaru pada platform.",
-}: ActivityFeedProps) {
+}: Readonly<ActivityFeedProps>) {
   return (
     <Card>
       <CardHeader>

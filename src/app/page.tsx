@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/shared/components/ui/card";
-import { KoaciLogo } from "@/shared/components/ui/KoaciLogo";
+import { KoaciLogo } from "@/shared/components/KoaciLogo";
 import { LoginForm, type LoginFormValues } from "@/features/auth/LoginForm";
 import api from "@/shared/lib/axios";
 
@@ -17,10 +17,14 @@ export default function AdminLoginPage() {
     setLoading(true);
     try {
       const { data } = await api.post("/auth/login", { email, password });
-      document.cookie = `access_token=${data.accessToken}; path=/; max-age=86400`;
-      localStorage.setItem("access_token", data.accessToken);
-      localStorage.setItem("refresh_token", data.refreshToken);
-      router.push("/dashboard");
+
+      const { accessToken, refreshToken } = data.data.tokens;
+
+      document.cookie = `access_token=${accessToken}; path=/; max-age=86400`;
+      localStorage.setItem("access_token", accessToken);
+      localStorage.setItem("refresh_token", refreshToken);
+
+      router.push("/admin/dashboard");
     } catch {
       setError("Email atau password salah.");
     } finally {
@@ -29,7 +33,9 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4 py-12">
+    <main className="flex min-h-screen w-full items-center justify-center bg-gray-50 px-4 py-12">
+      
+      {/* Card langsung diletakkan di dalam main */}
       <Card className="w-full max-w-[400px] shadow-elevated">
         <CardHeader className="space-y-4 pb-2 text-center">
           <KoaciLogo size="md" showText className="justify-center" />
@@ -42,6 +48,7 @@ export default function AdminLoginPage() {
           <LoginForm variant="admin" loading={loading} errorMessage={error} onSubmit={handleLogin} />
         </CardContent>
       </Card>
-    </div>
+
+    </main>
   );
 }

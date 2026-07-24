@@ -1,87 +1,144 @@
-import type { ActivityItem, DashboardStats, PerformancePoint } from "./types";
+import React, { useRef, useState } from "react";
+import { Upload } from "lucide-react";
 
-/**
- * Dummy data source. Replace these functions with real fetchers
- * (server functions / React Query) — the shape is the contract.
- */
+import { Button } from "@/shared/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/components/ui/dialog";
+import { Input } from "@/shared/components/ui/input";
+import { Label } from "@/shared/components/ui/label";
 
-export async function fetchDashboardStats(): Promise<DashboardStats> {
-  return {
-    totalInvestor: 1284,
-    totalInvestasi: 12_400_000_000,
-    totalProject: 42,
-    totalInvestasiAktif: 987,
-    deltas: {
-      totalInvestor: { value: "+124 bulan ini", direction: "up" },
-      totalInvestasi: { value: "+8,2%", direction: "up" },
-      totalProject: { value: "+3 baru", direction: "up" },
-      totalInvestasiAktif: { value: "-1,4%", direction: "down" },
-    },
+import type { NewInvestorInput } from "./types";
+
+interface InvestorFormDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (input: NewInvestorInput) => void;
+}
+
+export function InvestorFormDialog({
+  open,
+  onOpenChange,
+  onSubmit,
+}: Readonly<InvestorFormDialogProps>) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [documentName, setDocumentName] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const reset = () => {
+    setName("");
+    setEmail("");
+    setPhone("");
+    setDocumentName("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
-}
 
-export async function fetchPerformanceSeries(): Promise<PerformancePoint[]> {
-  return [
-    { month: "Jan", investasi: 620, return: 42 },
-    { month: "Feb", investasi: 780, return: 55 },
-    { month: "Mar", investasi: 940, return: 68 },
-    { month: "Apr", investasi: 880, return: 61 },
-    { month: "Mei", investasi: 1120, return: 82 },
-    { month: "Jun", investasi: 1340, return: 96 },
-    { month: "Jul", investasi: 1210, return: 88 },
-    { month: "Agu", investasi: 1480, return: 108 },
-    { month: "Sep", investasi: 1620, return: 121 },
-    { month: "Okt", investasi: 1780, return: 134 },
-    { month: "Nov", investasi: 1910, return: 146 },
-    { month: "Des", investasi: 2100, return: 162 },
-  ];
-}
+  const handleSubmit: React.FormEventHandler<HTMLFormElement> = (e) => {
+    e.preventDefault();
+    if (!name || !email) return;
+    onSubmit({ name, email, phone, documentName });
+    reset();
+    onOpenChange(false);
+  };
 
-export async function fetchRecentActivity(limit = 5): Promise<ActivityItem[]> {
-  const items: ActivityItem[] = [
-    {
-      id: "a1",
-      kind: "investor_join",
-      description: "Investor baru: Ahmad Fauzi menyelesaikan verifikasi KYC.",
-      timestamp: minutesAgo(6),
-    },
-    {
-      id: "a2",
-      kind: "investment_created",
-      description: "Siti Nurhaliza berinvestasi Rp 10.000.000 pada Sukuk SR-021.",
-      timestamp: minutesAgo(42),
-    },
-    {
-      id: "a3",
-      kind: "project_launched",
-      description: "Project baru diluncurkan: Pembiayaan UMKM Halal Batch #12.",
-      timestamp: hoursAgo(2),
-    },
-    {
-      id: "a4",
-      kind: "report_published",
-      description: "Laporan bulanan September 2025 dipublikasikan ke 1.284 investor.",
-      timestamp: hoursAgo(5),
-    },
-    {
-      id: "a5",
-      kind: "payout",
-      description: "Distribusi bagi hasil Rp 148.500.000 berhasil diproses.",
-      timestamp: hoursAgo(9),
-    },
-    {
-      id: "a6",
-      kind: "system",
-      description: "Sinkronisasi data harian selesai tanpa kendala.",
-      timestamp: hoursAgo(14),
-    },
-  ];
-  return items.slice(0, limit);
-}
-
-function minutesAgo(m: number) {
-  return new Date(Date.now() - m * 60_000).toISOString();
-}
-function hoursAgo(h: number) {
-  return new Date(Date.now() - h * 3_600_000).toISOString();
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) reset();
+        onOpenChange(next);
+      }}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Tambah Investor</DialogTitle>
+          <DialogDescription>
+            Isi data investor baru. Data akan tampil di daftar setelah disimpan.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="inv-name">Nama Lengkap</Label>
+            <Input
+              id="inv-name"
+              placeholder="Contoh: Ahmad Fauzi"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="inv-email">Email</Label>
+            <Input
+              id="inv-email"
+              type="email"
+              placeholder="nama@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="inv-phone">No. Telepon</Label>
+            <Input
+              id="inv-phone"
+              type="tel"
+              placeholder="+62 812-3456-7890"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="inv-doc">Upload Dokumen</Label>
+            <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Pilih file
+              </Button>
+              <span className="truncate text-sm text-muted-foreground">
+                {documentName || "Belum ada file dipilih"}
+              </span>
+              <input
+                ref={fileInputRef}
+                id="inv-doc"
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                className="hidden"
+                onChange={(e) =>
+                  setDocumentName(e.target.files?.[0]?.name ?? "")
+                }
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Format PDF, JPG, atau PNG. Maks. 5 MB.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+            >
+              Batal
+            </Button>
+            <Button type="submit" variant="primary">
+              Simpan Investor
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 }

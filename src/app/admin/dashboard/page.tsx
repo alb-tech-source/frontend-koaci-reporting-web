@@ -9,7 +9,7 @@ import {
   fetchDashboardStats, 
   fetchPerformanceSeries, 
   fetchRecentActivity 
-} from "@/features/admin-dashboard/dummy-data";
+} from "@/features/admin-dashboard/api";
 
 export const metadata: Metadata = {
   title: "Dashboard · Koaci Admin",

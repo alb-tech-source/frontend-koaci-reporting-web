@@ -17,7 +17,12 @@ export interface LoginFormProps {
   onSubmit?: (values: LoginFormValues) => void;
 }
 
-export function LoginForm({ variant, loading, errorMessage, onSubmit }: LoginFormProps) {
+export function LoginForm({
+  variant,
+  loading,
+  errorMessage,
+  onSubmit,
+}: Readonly<LoginFormProps>) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -71,13 +76,13 @@ export function LoginForm({ variant, loading, errorMessage, onSubmit }: LoginFor
         {loading ? "Memproses..." : "Masuk"}
       </Button>
       <div className="text-center">
-        <a
-          href="#"
-          className="inline-block text-sm text-muted-foreground transition-colors hover:text-brand"
+        <button
+          type="button"
+          className="inline-block text-sm text-muted-foreground transition-colors hover:text-brand bg-transparent border-none cursor-pointer p-0"
           onClick={(e) => e.preventDefault()}
         >
           Lupa password?
-        </a>
+        </button>
       </div>
     </form>
   );

@@ -2,14 +2,13 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtDecode } from "jwt-decode";
 
-const ADMIN_ROLES = new Set(["administrator", "super_admin", "management"]);
+const ADMIN_ROLES = new Set(["admin", "bod"]);
 const PROTECTED_PREFIX = "/admin";
 
 export function middleware(request: NextRequest) {
   const token = request.cookies.get("access_token")?.value;
   const path = request.nextUrl.pathname;
 
-  // Sudah login tapi buka root ("/") -> lempar ke dashboard, jangan tampilkan login lagi
   if (path === "/" && token) {
     try {
       jwtDecode(token);
@@ -19,7 +18,6 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Belum login, coba akses area admin -> lempar ke login
   if (!token && path.startsWith(PROTECTED_PREFIX)) {
     return NextResponse.redirect(new URL("/", request.url));
   }

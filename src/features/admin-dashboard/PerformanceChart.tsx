@@ -39,7 +39,7 @@ export function PerformanceChart({
   data,
   title = "Statistik Performa Investasi",
   description = "Investasi masuk vs. return 12 bulan terakhir (dalam juta rupiah).",
-}: PerformanceChartProps) {
+}: Readonly<PerformanceChartProps>) {
   const [mode, setMode] = useState<"line" | "bar">("line");
 
   return (
@@ -202,7 +202,7 @@ export function PerformanceChart({
   );
 }
 
-function LegendDot({ color, label }: { color: string; label: string }) {
+function LegendDot({ color, label }: Readonly<{ color: string; label: string }>) {
   return (
     <span className="inline-flex items-center gap-1.5">
       <span

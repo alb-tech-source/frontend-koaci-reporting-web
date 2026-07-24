@@ -1,17 +1,16 @@
 "use client";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Bell,
   LayoutDashboard,
   Search,
-  Settings,
   Users,
-  Wallet,
-  FileText,
   type LucideIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 
 import { Input } from "@/shared/components/ui/input";
 import { Button } from "@/shared/components/ui/button";
@@ -30,7 +29,19 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/shared/components/ui/sidebar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/shared/components/ui/alert-dialog";
 import { cn } from "@/shared/lib/utils";
+import { hasPermission, logout, getCurrentUser } from "@/shared/lib/auth";
 
 export interface AdminNavItem {
   to: string;
@@ -40,29 +51,48 @@ export interface AdminNavItem {
 
 export const defaultAdminNav: AdminNavItem[] = [
   { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/admin/investor-management", label: "Investor", icon: Users },
-  { to: "/admin/portofolio", label: "Portofolio", icon: Wallet },
-  { to: "/admin/laporan", label: "Laporan", icon: FileText },
-  { to: "/admin/pengaturan", label: "Pengaturan", icon: Settings },
+  // Tambahkan menu users di sini (akan otomatis disembunyikan jika tidak ada akses)
+  { to: "/admin/users", label: "Users", icon: Users },
 ];
 
 interface AdminShellProps {
   children: ReactNode;
   navItems?: AdminNavItem[];
   title?: string;
-  user?: { name: string; email?: string };
+  // Prop user opsional dipertahankan untuk fleksibilitas masa depan jika JWT sudah di-update
+  user?: { name?: string; email?: string }; 
 }
 
 export function AdminShell({
   children,
   navItems = defaultAdminNav,
   title = "Koaci Admin",
-  user = { name: "Admin", email: "admin@koaci.id" },
-}: AdminShellProps) {
+  user,
+}: Readonly<AdminShellProps>) {
+  const canViewUsers = hasPermission("users:read");
+  const currentUser = getCurrentUser();
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const filteredNavItems = navItems.filter(
+    (item) => item.to !== "/admin/users" || canViewUsers
+  );
+
+  const displayRoleName = currentUser?.role === "bod" ? "BOD" : "Admin";
+  const displayName = String(user?.name || displayRoleName);
+  const displayEmail = String(currentUser?.email || user?.email || "admin@koaci.id");
+  const initials = displayName.slice(0, 2).toUpperCase();
+  
+  if (!mounted) {
+    return <div className="min-h-screen w-full bg-muted/40" />; 
+  }
+
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-muted/40">
-        <AdminSidebar navItems={navItems} title={title} />
+        {/* Kirimkan nav items yang sudah di-filter */}
+        <AdminSidebar navItems={filteredNavItems} title={title} />
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/95 px-3 backdrop-blur sm:px-6">
             <SidebarTrigger className="shrink-0" />
@@ -84,19 +114,43 @@ export function AdminShell({
               <div className="hidden items-center gap-2 sm:flex">
                 <div className="text-right leading-tight">
                   <p className="text-sm font-medium text-foreground">
-                    {user.name}
+                    {displayName}
                   </p>
-                  {user.email ? (
-                    <p className="text-xs text-muted-foreground">
-                      {user.email}
-                    </p>
-                  ) : null}
+                  <p className="text-xs text-muted-foreground">
+                    {displayEmail}
+                  </p>
                 </div>
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-gradient-brand text-brand-foreground text-xs">
-                    {user.name.slice(0, 2).toUpperCase()}
+                    {initials}
                   </AvatarFallback>
                 </Avatar>
+
+                {/* Implementasi AlertDialog untuk Logout */}
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      Keluar
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Keluar dari akun?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Anda perlu login kembali untuk mengakses Reporting Console.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Batal</AlertDialogCancel>
+                      <AlertDialogAction
+                      className="bg-danger text-white hover:bg-danger/90"
+                      onClick={() => logout("/")}>
+
+                        Ya, Keluar
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
           </header>
@@ -110,10 +164,10 @@ export function AdminShell({
 function AdminSidebar({
   navItems,
   title,
-}: {
+}: Readonly<{
   navItems: AdminNavItem[];
   title: string;
-}) {
+}>) {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const pathname = usePathname();
