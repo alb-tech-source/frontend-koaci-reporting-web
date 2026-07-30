@@ -1,6 +1,11 @@
 "use client";
 
-import { queryOptions, useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
+import { 
+  queryOptions, 
+  useSuspenseQuery, 
+  useQueryClient, 
+  useMutation // 1. Tambahkan useMutation
+} from "@tanstack/react-query";
 import {
   AlertTriangle,
   Pencil,
@@ -10,6 +15,7 @@ import {
   Trash2,
   UserPlus,
   Users as UsersIcon,
+  Loader2, // 2. Tambahkan icon Loader2
 } from "lucide-react";
 import { Suspense, useEffect, useMemo, useState } from "react";
 
@@ -45,7 +51,6 @@ import { cn } from "@/shared/lib/utils";
 import { UserFormDialog } from "@/features/user-management/UserFormDialog";
 import { NewUserSuccessDialog } from "@/features/user-management/NewUserSuccessDialog";
 
-// IMPORT API LENGKAP
 import { 
   fetchUsers, 
   createUser, 
@@ -110,6 +115,11 @@ const PAGE_SIZE = 10;
 function UsersPageContent() {
   const { data: users } = useSuspenseQuery(usersQuery);
   const queryClient = useQueryClient();
+
+  const canCreate = hasPermission("users:create");
+  const canUpdate = hasPermission("users:update");
+  const canDelete = hasPermission("users:delete");
+  const hasActions = canUpdate || canDelete;
   
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
@@ -179,19 +189,11 @@ function UsersPageContent() {
           is_active: values.activate,
         });
 
-        console.log("Response from createUser:", response);
-
         queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
         setFormOpen(false);
         setPage(1);
 
-        const tempPassword = 
-          response?.data?.temporary_password || 
-          response?.data?.password || 
-          response?.temporary_password || 
-          response?.password || 
-          response?.temp_password ||
-          "CEK_CONSOLE_F12";
+        const tempPassword = response?.data?.temporaryPassword || "Gagal mendapatkan password";
 
         setCreatedUser({
           fullName: `${values.firstName} ${values.lastName}`.trim(),
@@ -204,24 +206,33 @@ function UsersPageContent() {
     }
   };
 
-  const toggleStatus = async (user: AppUser) => {
-    try {
-      await toggleUserActivation(user.id, user.status !== "active");
+  // 3. Ganti fungsi manual toggleStatus dengan useMutation
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
+      toggleUserActivation(id, isActive),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error("Gagal mengubah status:", error);
-    }
-  };
+    },
+  });
 
-  const confirmDelete = async () => {
-    if (!deleteTarget) return;
-    try {
-      await deleteUser(deleteTarget.id); 
+  // 4. Ganti fungsi manual confirmDelete dengan useMutation
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteUser(id),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
-      setDeleteTarget(null);
-    } catch (error) {
+      setDeleteTarget(null); // Tutup dialog setelah berhasil dihapus
+    },
+    onError: (error) => {
       console.error("Gagal menghapus pengguna:", error);
-    }
+    },
+  });
+
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    deleteMutation.mutate(deleteTarget.id);
   };
 
   const isEmpty = pageItems.length === 0;
@@ -237,13 +248,16 @@ function UsersPageContent() {
             Kelola akun pengguna sistem.
           </p>
         </div>
-        <Button variant="primary" onClick={openCreate}>
-          <Plus className="h-4 w-4" />
-          Tambah User
-        </Button>
+        {canCreate && (
+          <Button variant="primary" onClick={openCreate}>
+            <Plus className="h-4 w-4" />
+            Tambah User
+          </Button>
+        )}
       </header>
 
       <div className="rounded-2xl border border-border bg-background shadow-card">
+        {/* ... (Bagian Filter & Search tetap sama) ... */}
         <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative w-full sm:max-w-sm">
             <Search
@@ -307,7 +321,7 @@ function UsersPageContent() {
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Terakhir Login</TableHead>
-                <TableHead className="w-32 text-right">Aksi</TableHead>
+                {hasActions && <TableHead className="w-32 text-right">Aksi</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -350,45 +364,52 @@ function UsersPageContent() {
                     <TableCell className="text-sm text-muted-foreground">
                       {formatRelativeTime(u.lastLoginAt)}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label="Edit pengguna"
-                          onClick={() => openEdit(u)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={
-                            u.status === "active"
-                              ? "Nonaktifkan pengguna"
-                              : "Aktifkan pengguna"
-                          }
-                          onClick={() => toggleStatus(u)}
-                        >
-                          <Power
-                            className={cn(
-                              "h-4 w-4",
-                              u.status === "active"
-                                ? "text-success"
-                                : "text-muted-foreground",
-                            )}
-                          />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label="Hapus pengguna"
-                          onClick={() => setDeleteTarget(u)}
-                        >
-                          <Trash2 className="h-4 w-4 text-danger" />
-                        </Button>
-                      </div>
-                    </TableCell>
+                    {hasActions && (
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          
+                          {canUpdate && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label="Edit pengguna"
+                                onClick={() => openEdit(u)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              
+                              {/* 5. Terapkan Loading State di Tombol Toggle */}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label={u.status === "active" ? "Nonaktifkan pengguna" : "Aktifkan pengguna"}
+                                disabled={toggleMutation.isPending && toggleMutation.variables?.id === u.id}
+                                onClick={() => toggleMutation.mutate({ id: u.id, isActive: u.status !== "active" })}
+                              >
+                                {toggleMutation.isPending && toggleMutation.variables?.id === u.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                ) : (
+                                  <Power className={cn("h-4 w-4", u.status === "active" ? "text-success" : "text-muted-foreground")} />
+                                )}
+                              </Button>
+                            </>
+                          )}
+
+                          {canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label="Hapus pengguna"
+                              onClick={() => setDeleteTarget(u)}
+                            >
+                              <Trash2 className="h-4 w-4 text-danger" />
+                            </Button>
+                          )}
+                          
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               )}
@@ -450,6 +471,7 @@ function UsersPageContent() {
         password={createdUser?.password ?? ""}
       />
 
+      {/* 6. Terapkan Loading State di Modal Konfirmasi Hapus */}
       <Dialog
         open={deleteTarget !== null}
         onOpenChange={(o) => !o && setDeleteTarget(null)}
@@ -475,11 +497,26 @@ function UsersPageContent() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+            <Button 
+              variant="outline" 
+              onClick={() => setDeleteTarget(null)}
+              disabled={deleteMutation.isPending}
+            >
               Batalkan
             </Button>
-            <Button variant="danger" onClick={confirmDelete}>
-              Ya, Hapus
+            <Button 
+              variant="danger" 
+              onClick={confirmDelete}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Menghapus...
+                </>
+              ) : (
+                "Ya, Hapus"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -489,6 +526,7 @@ function UsersPageContent() {
 }
 
 function EmptyState({ onAdd }: Readonly<{ onAdd: () => void }>) {
+  // ... (Sama seperti sebelumnya) ...
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
       <div className="grid h-14 w-14 place-items-center rounded-full bg-muted">
@@ -509,6 +547,7 @@ function EmptyState({ onAdd }: Readonly<{ onAdd: () => void }>) {
 }
 
 function PageSkeleton() {
+  // ... (Sama seperti sebelumnya) ...
   return (
     <div className="space-y-4">
       <Skeleton className="h-8 w-64" />

@@ -27,7 +27,7 @@ export function NewUserSuccessDialog({
   fullName,
   email,
   password,
-}: NewUserSuccessDialogProps) {
+}: Readonly<NewUserSuccessDialogProps>) {
   const [visible, setVisible] = useState(false);
   const [copied, setCopied] = useState(false);
 

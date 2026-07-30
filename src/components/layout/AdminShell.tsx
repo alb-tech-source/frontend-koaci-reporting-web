@@ -1,5 +1,7 @@
+// web/src/components/layout/AdminShell.tsx
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -41,7 +43,7 @@ import {
   AlertDialogTrigger,
 } from "@/shared/components/ui/alert-dialog";
 import { cn } from "@/shared/lib/utils";
-import { hasPermission, logout, getCurrentUser } from "@/shared/lib/auth";
+import { hasPermission, logout, getCurrentUser, fetchCurrentUserProfile } from "@/shared/lib/auth";
 
 export interface AdminNavItem {
   to: string;
@@ -51,7 +53,7 @@ export interface AdminNavItem {
 
 export const defaultAdminNav: AdminNavItem[] = [
   { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  // Tambahkan menu users di sini (akan otomatis disembunyikan jika tidak ada akses)
+  { to: "/admin/investor", label: "Investor", icon: Users },
   { to: "/admin/users", label: "Users", icon: Users },
 ];
 
@@ -59,7 +61,6 @@ interface AdminShellProps {
   children: ReactNode;
   navItems?: AdminNavItem[];
   title?: string;
-  // Prop user opsional dipertahankan untuk fleksibilitas masa depan jika JWT sudah di-update
   user?: { name?: string; email?: string }; 
 }
 
@@ -72,6 +73,12 @@ export function AdminShell({
   const canViewUsers = hasPermission("users:read");
   const currentUser = getCurrentUser();
 
+  const { data: profile } = useQuery({
+    queryKey: ["current-user-profile"],
+    queryFn: fetchCurrentUserProfile,
+    staleTime: Infinity,
+  });
+
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -79,9 +86,8 @@ export function AdminShell({
     (item) => item.to !== "/admin/users" || canViewUsers
   );
 
-  const displayRoleName = currentUser?.role === "bod" ? "BOD" : "Admin";
-  const displayName = String(user?.name || displayRoleName);
-  const displayEmail = String(currentUser?.email || user?.email || "admin@koaci.id");
+  const displayName = profile?.firstname ?? "Pengguna";
+  const displayEmail = profile?.email ?? currentUser?.email ?? user?.email ?? "admin@koaci.id";
   const initials = displayName.slice(0, 2).toUpperCase();
   
   if (!mounted) {
@@ -113,6 +119,7 @@ export function AdminShell({
               </Button>
               <div className="hidden items-center gap-2 sm:flex">
                 <div className="text-right leading-tight">
+                  {/* === IMPLEMENTASI RENDER NAMA & EMAIL === */}
                   <p className="text-sm font-medium text-foreground">
                     {displayName}
                   </p>
@@ -145,7 +152,6 @@ export function AdminShell({
                       <AlertDialogAction
                       className="bg-danger text-white hover:bg-danger/90"
                       onClick={() => logout("/")}>
-
                         Ya, Keluar
                       </AlertDialogAction>
                     </AlertDialogFooter>

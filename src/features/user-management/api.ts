@@ -38,6 +38,6 @@ export async function deleteUser(id: string) {
 }
 
 export async function toggleUserActivation(id: string, isActive: boolean) {
-  const { data } = await api.patch(`/users/${id}/activate`, { is_active: isActive });
+  const { data } = await api.patch(`/users/${id}/activate`, { isActive });
   return data;
 }
