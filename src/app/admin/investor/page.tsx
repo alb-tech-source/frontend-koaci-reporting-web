@@ -1,6 +1,6 @@
 "use client";
 
-import { queryOptions, useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useSuspenseQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { MoreHorizontal, Plus, Search, AlertTriangle } from "lucide-react";
 import { Suspense, useEffect, useMemo, useState } from "react";
 
@@ -31,14 +31,20 @@ import {
 } from "@/shared/components/ui/table";
 
 import { InvestorFormDialog } from "@/features/investor-management/InvestorFormDialog";
-import { fetchInvestors, fetchLinkableUsers } from "@/features/investor-management/api";
+import { 
+  fetchInvestors, 
+  fetchLinkableUsers, 
+  createInvestor, 
+  updateInvestor,
+  uploadInvestorDocument
+} from "@/features/investor-management/api";
 import type { Investor, InvestorFormValues, InvestorStatus } from "@/features/investor-management/types";
 import { formatIDR, statusBadgeVariant, statusLabel } from "@/features/investor-management/utils";
 import { hasPermission } from "@/shared/lib/auth";
 
 const investorsQuery = queryOptions({
   queryKey: ["admin", "investors"],
-  queryFn: fetchInvestors,
+  queryFn: () => fetchInvestors(),
 });
 
 const linkableUsersQuery = queryOptions({
@@ -48,7 +54,6 @@ const linkableUsersQuery = queryOptions({
 
 const PAGE_SIZE = 4;
 
-// 1. TAMBAHKAN WRAPPER UTAMA & SECURITY GUARD
 export default function InvestorPage() {
   const [mounted, setMounted] = useState(false);
     
@@ -60,19 +65,20 @@ export default function InvestorPage() {
     return <TableSkeleton />;
   }
 
-  // if (!hasPermission("investors:read")) {
-  //  return (
-  //    <div className="flex h-[60vh] flex-col items-center justify-center text-center">
-  //      <div className="mb-4 grid h-12 w-12 place-items-center rounded-full bg-danger/10 text-danger">
-  //        <AlertTriangle className="h-6 w-6" />
-  //      </div>
-  //     <h2 className="text-lg font-semibold text-foreground">Akses Ditolak</h2>
-  //     <p className="text-sm text-muted-foreground">
-  //       Anda tidak memiliki izin (investors:read) untuk mengakses halaman ini.
-  //     </p>
-  //   </div>
-  // );
-  // }
+  // Security Guard: Blokir akses halaman jika tidak punya izin "investors:read"
+  if (!hasPermission("investors:read")) {
+    return (
+      <div className="flex h-[60vh] flex-col items-center justify-center text-center">
+        <div className="mb-4 grid h-12 w-12 place-items-center rounded-full bg-danger/10 text-danger">
+          <AlertTriangle className="h-6 w-6" />
+        </div>
+        <h2 className="text-lg font-semibold text-foreground">Akses Ditolak</h2>
+        <p className="text-sm text-muted-foreground">
+          Anda tidak memiliki izin (investors:read) untuk mengakses halaman ini.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <Suspense fallback={<TableSkeleton />}>
@@ -81,56 +87,92 @@ export default function InvestorPage() {
   );
 }
 
-// 2. KOMPONEN HALAMAN LIST
 function InvestorListPage() {
   const { data } = useSuspenseQuery(investorsQuery);
   const { data: users } = useSuspenseQuery(linkableUsersQuery);
   const queryClient = useQueryClient();
 
-  // ELEMENT LEVEL AUTHORIZATION
-  // const canCreate = hasPermission("investors:create");
-  // const canUpdate = hasPermission("investors:update");
-  // const canDelete = hasPermission("investors:delete");
-  // const hasActions = canUpdate || canDelete;
+  // Element-Level Authorization: Kontrol aksi berdasarkan izin
+  const canCreate = hasPermission("investors:create");
+  const canUpdate = hasPermission("investors:update");
+  const canDelete = hasPermission("investors:delete");
+  const hasActions = canUpdate || canDelete;
 
-  const [investors, setInvestors] = useState<Investor[]>(data);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<InvestorStatus | "all">("all");
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Investor | null>(null);
 
+  // MUTASI CREATE DENGAN CHAINED FILE UPLOAD
+  const createMutation = useMutation({
+    mutationFn: async ({ input, file }: { input: InvestorFormValues; file?: File | null }) => {
+      // 1. Tembak API Create Investor
+      const response = await createInvestor(input);
+      const newInvestorId = response?.data?.investor_id || response?.investor_id; 
+
+      // 2. Jika sukses dan ada file yang dipilih, otomatis tembak API Upload Document
+      if (file && newInvestorId) {
+        await uploadInvestorDocument(newInvestorId, input.documentName || file.name, file);
+      }
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "investors"] });
+      setOpen(false);
+    },
+    onError: (error) => {
+      console.error("Gagal menyimpan investor:", error);
+      alert("Terjadi kesalahan saat menyimpan data. Coba lagi.");
+    }
+  });
+
+  // MUTASI UPDATE DENGAN FILE UPLOAD
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, payload, file }: { id: string; payload: InvestorFormValues; file?: File | null }) => {
+      // 1. Update data teks
+      const response = await updateInvestor(id, payload);
+      
+      // 2. Jika edit juga menyisipkan file baru, upload file-nya
+      if (file) {
+        await uploadInvestorDocument(id, payload.documentName || file.name, file);
+      }
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "investors"] });
+      setOpen(false);
+      setEditing(null);
+    },
+    onError: (error) => {
+      console.error("Gagal mengupdate investor:", error);
+      alert("Terjadi kesalahan saat memperbarui data. Coba lagi.");
+    }
+  });
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return investors.filter((i) => {
+    return data.filter((i) => {
       const matchQ = !q || i.name.toLowerCase().includes(q) || i.email.toLowerCase().includes(q);
       const matchStatus = status === "all" || i.status === status;
       return matchQ && matchStatus;
     });
-  }, [investors, search, status]);
+  }, [data, search, status]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  const handleSubmit = (input: InvestorFormValues) => {
-    // Karena masih MOCK, kita update state lokal.
-    // Nanti setelah API siap, panggil fungsi POST/PUT dan gunakan queryClient.invalidateQueries
+  // Tangkap file dari komponen Dialog Form
+  const handleSubmit = (input: InvestorFormValues, file?: File | null) => {
     if (editing) {
-      setInvestors((prev) => prev.map((i) => (i.id === editing.id ? { ...i, ...input } : i)));
-      setEditing(null);
-      return;
+      updateMutation.mutate({ id: editing.id, payload: input, file });
+    } else {
+      createMutation.mutate({ input, file });
     }
-    const next: Investor = {
-      ...input,
-      id: `INV-${String(investors.length + 1).padStart(3, "0")}`,
-      totalInvestasi: 0,
-      status: "pending",
-      joinedAt: new Date().toISOString().slice(0, 10),
-    };
-    setInvestors((prev) => [next, ...prev]);
-    setPage(1);
   };
+
+  const isPending = createMutation.isPending || updateMutation.isPending;
 
   return (
     <div className="space-y-6">
@@ -144,11 +186,13 @@ function InvestorListPage() {
           </p>
         </div> 
         
-          <Button variant="primary" onClick={() => { setEditing(null); setOpen(true); }}>
+        {/* Render kondisional berdasarkan izin */}
+        {canCreate && (
+          <Button variant="primary" onClick={() => { setEditing(null); setOpen(true); }} disabled={isPending}>
             <Plus className="h-4 w-4" />
             Tambah Investor
           </Button>
-    
+        )}
       </header>
 
       <div className="rounded-2xl border border-border bg-background shadow-card">
@@ -184,13 +228,13 @@ function InvestorListPage() {
                 <TableHead>Email</TableHead>
                 <TableHead className="text-right">Total Investasi</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-16 text-right">Aksi</TableHead>
+                {hasActions && <TableHead className="w-16 text-right">Aksi</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {pageItems.length === 0 ? (
                 <TableRow>
-                  <TableCell className="h-24 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={hasActions ? 5 : 4} className="h-24 text-center text-sm text-muted-foreground">
                     Tidak ada investor yang cocok.
                   </TableCell>
                 </TableRow>
@@ -209,6 +253,7 @@ function InvestorListPage() {
                       </Badge>
                     </TableCell>
                     
+                    {hasActions && (
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -219,19 +264,21 @@ function InvestorListPage() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem>Lihat detail</DropdownMenuItem>
 
+                            {canUpdate && (
                               <DropdownMenuItem onSelect={() => { setEditing(inv); setOpen(true); }}>
                                 Edit
                               </DropdownMenuItem>
+                            )}
 
-
+                            {canDelete && (
                               <DropdownMenuItem className="text-danger focus:text-danger">
                                 Hapus
                               </DropdownMenuItem>
-
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
-
+                    )}
                   </TableRow>
                 ))
               )}
@@ -257,7 +304,12 @@ function InvestorListPage() {
 
       <InvestorFormDialog
         open={open}
-        onOpenChange={(next) => { setOpen(next); if (!next) setEditing(null); }}
+        onOpenChange={(next) => { 
+          if (!isPending) {
+            setOpen(next); 
+            if (!next) setEditing(null); 
+          }
+        }}
         onSubmit={handleSubmit}
         users={users}
         mode={editing ? "edit" : "create"}

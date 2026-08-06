@@ -55,7 +55,8 @@ import type {
 interface InvestorFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (input: InvestorFormValues) => void;
+  // UPDATE: Tambahkan parameter file opsional pada fungsi onSubmit
+  onSubmit: (input: InvestorFormValues, file?: File | null) => void;
   users: LinkableUser[];
   mode?: "create" | "edit";
   initialValue?: Investor | null;
@@ -85,6 +86,7 @@ export function InvestorFormDialog({
   initialValue = null,
 }: Readonly<InvestorFormDialogProps>) {
   const [values, setValues] = useState<InvestorFormValues>(emptyValues);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null); // State penyimpan file fisik
   const [userPickerOpen, setUserPickerOpen] = useState(false);
   const [nikError, setNikError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -110,6 +112,7 @@ export function InvestorFormDialog({
       setValues({ ...emptyValues, heir: { ...emptyHeirData } });
     }
     setNikError("");
+    setSelectedFile(null); // Reset file saat pop-up dibuka ulang
     if (fileInputRef.current) fileInputRef.current.value = "";
   }, [open, initialValue]);
 
@@ -144,8 +147,9 @@ export function InvestorFormDialog({
       return;
     }
     if (!values.userId || !values.bankName) return;
-    onSubmit(values);
-    onOpenChange(false);
+    
+    // UPDATE: Kirim nilai teks DAN file fisiknya
+    onSubmit(values, selectedFile);
   };
 
   return (
@@ -416,9 +420,14 @@ export function InvestorFormDialog({
                 type="file"
                 accept=".pdf,.jpg,.jpeg,.png"
                 className="hidden"
-                onChange={(e) =>
-                  set("documentName", e.target.files?.[0]?.name ?? "")
-                }
+                onChange={(e) => {
+                  // UPDATE: Tangkap objek filenya di sini
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setSelectedFile(file);
+                    set("documentName", file.name);
+                  }
+                }}
               />
             </div>
             <p className="text-xs text-muted-foreground">
