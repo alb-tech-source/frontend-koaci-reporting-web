@@ -1,33 +1,24 @@
-import { useEffect, useState, type FormEvent } from "react";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/shared/components/ui/button";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter,
+  DialogHeader, DialogTitle,
 } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/shared/components/ui/select";
 import { Switch } from "@/shared/components/ui/switch";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 
-import {
-  PERMISSIONS,
-  type AppUser,
-  type PermissionKey,
-  type UserFormValues,
-  type UserRole,
-} from "./types";
+import { type AppUser, type Permission, type UserFormValues, type UserRole } from "./types";
+import { fetchPermissions } from "./api";
 
 interface UserFormDialogProps {
   open: boolean;
@@ -35,16 +26,21 @@ interface UserFormDialogProps {
   mode: "create" | "edit";
   initialUser?: AppUser | null;
   onSubmit: (values: UserFormValues) => void;
+  currentUserRole?: string;
 }
 
-const emptyValues: UserFormValues = {
-  firstName: "",
-  lastName: "",
-  email: "",
-  role: "investor",
-  permissions: ["users:read"],
-  activate: true,
-} as const;
+const ROLE_LABELS: Record<string, string> = {
+  superadmin: "Super Admin",
+  admin: "Admin",
+  bod: "BOD",
+  investor: "Investor",
+  user: "User",
+};
+
+// Role yang tidak perlu panel permission
+const ROLES_WITHOUT_PERMISSIONS = new Set(["investor", "user"]);
+// Role yang permission-nya dikunci penuh (semua dicentang, tidak bisa diubah)
+const ROLES_FULL_LOCKED = new Set(["superadmin"]);
 
 export function UserFormDialog({
   open,
@@ -52,10 +48,25 @@ export function UserFormDialog({
   mode,
   initialUser,
   onSubmit,
+  currentUserRole = "admin",
 }: Readonly<UserFormDialogProps>) {
+  const emptyValues: UserFormValues = {
+    firstName: "",
+    lastName: "",
+    email: "",
+    role: "user",
+    permissions: [],
+    activate: true,
+  };
+
   const [values, setValues] = useState<UserFormValues>(emptyValues);
 
-  // 1. Hook untuk memuat data awal saat modal dibuka
+  const { data: permissions = [], isLoading: loadingPerms } = useQuery<Permission[]>({
+    queryKey: ["permissions"],
+    queryFn: fetchPermissions,
+    staleTime: 5 * 60 * 1000,
+  });
+
   useEffect(() => {
     if (!open) return;
     if (mode === "edit" && initialUser) {
@@ -70,19 +81,10 @@ export function UserFormDialog({
     } else {
       setValues(emptyValues);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, mode, initialUser]);
 
-  // 2. Hook BARU: Mengatur ulang izin akses secara otomatis ketika role diubah
-  useEffect(() => {
-    if (values.role === "investor") {
-      setValues((v) => ({ ...v, permissions: [] }));
-    } else if (values.role === "bod") {
-      setValues((v) => ({ ...v, permissions: ["users:read"] }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [values.role]);
-
-  const togglePermission = (key: PermissionKey, checked: boolean) => {
+  const togglePermission = (key: string, checked: boolean) => {
     setValues((v) => ({
       ...v,
       permissions: checked
@@ -98,13 +100,23 @@ export function UserFormDialog({
     onOpenChange(false);
   };
 
+  // Role options tergantung siapa yang login
+  const availableRoles: UserRole[] = currentUserRole === "superadmin"
+    ? ["superadmin", "admin", "bod", "investor", "user"]
+    : ["admin", "bod", "investor", "user"];
+
+  const showPermissions = !ROLES_WITHOUT_PERMISSIONS.has(values.role);
+  const isFullLocked = ROLES_FULL_LOCKED.has(values.role);
+
+  const getChecked = (key: string): boolean => {
+    if (isFullLocked) return true; 
+    return values.permissions.includes(key);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {/* 1. Tambahkan pembatas tinggi (max-h-[90vh]), hilangkan padding (p-0), jadikan Flexbox */}
       <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
-        
-        {/* === BAGIAN 1: HEADER (STICKY) === */}
-        <div className="px-6 pt-6 pb-4 border-b border-transparent">
+        <div className="px-6 pt-6 pb-4 border-b border-border">
           <DialogHeader>
             <DialogTitle>
               {mode === "edit" ? "Edit Pengguna" : "Tambah Pengguna"}
@@ -117,10 +129,7 @@ export function UserFormDialog({
           </DialogHeader>
         </div>
 
-        {/* === BAGIAN 2: ISI FORMULIR (SCROLLABLE) === */}
-        {/* flex-1 dan overflow-y-auto membuat area ini bisa di-scroll tanpa melebihi layar */}
-        <div className="flex-1 overflow-y-auto px-6 py-2">
-          {/* Berikan ID pada form agar bisa dipanggil dari Footer nanti */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
           <form id="user-form" onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
@@ -128,9 +137,7 @@ export function UserFormDialog({
                 <Input
                   id="usr-first"
                   value={values.firstName}
-                  onChange={(e) =>
-                    setValues((v) => ({ ...v, firstName: e.target.value }))
-                  }
+                  onChange={(e) => setValues((v) => ({ ...v, firstName: e.target.value }))}
                   required
                 />
               </div>
@@ -139,9 +146,7 @@ export function UserFormDialog({
                 <Input
                   id="usr-last"
                   value={values.lastName}
-                  onChange={(e) =>
-                    setValues((v) => ({ ...v, lastName: e.target.value }))
-                  }
+                  onChange={(e) => setValues((v) => ({ ...v, lastName: e.target.value }))}
                 />
               </div>
             </div>
@@ -152,9 +157,7 @@ export function UserFormDialog({
                 id="usr-email"
                 type="email"
                 value={values.email}
-                onChange={(e) =>
-                  setValues((v) => ({ ...v, email: e.target.value }))
-                }
+                onChange={(e) => setValues((v) => ({ ...v, email: e.target.value }))}
                 required
               />
             </div>
@@ -163,63 +166,60 @@ export function UserFormDialog({
               <Label>Role</Label>
               <Select
                 value={values.role}
-                onValueChange={(r) =>
-                  setValues((v) => ({ ...v, role: r as UserRole }))
-                }
+                onValueChange={(r) => setValues((v) => ({ ...v, role: r as UserRole }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Pilih role" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="investor">Investor</SelectItem>
-                  <SelectItem value="bod">BOD</SelectItem>
+                  {availableRoles.map((r) => (
+                    <SelectItem key={r} value={r}>
+                      {ROLE_LABELS[r] ?? r}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
             {/* Blok Izin Akses */}
-            {values.role === "investor" ? (
+            {!showPermissions ? (
               <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-                Investor menggunakan alur aktivasi email sendiri, tidak memerlukan
-                pengaturan izin akses tambahan.
+                {values.role === "user"
+                  ? "User dapat registrasi mandiri. Akses dibatasi hingga admin mengupgrade ke role Investor."
+                  : "Investor menggunakan alur aktivasi sendiri, tidak perlu pengaturan izin."}
               </div>
             ) : (
               <div className="space-y-2">
-                <Label>Izin Akses</Label>
-                <div className="grid grid-cols-1 gap-2 rounded-lg border border-border p-3 sm:grid-cols-2">
-                  {PERMISSIONS.map((p) => {
-                    const isBod = values.role === "bod";
-                    const checked = isBod
-                      ? p.key === "users:read"
-                      : values.permissions.includes(p.key);
-                    return (
+                <div className="flex items-center justify-between">
+                  <Label>Izin Akses</Label>
+                  {isFullLocked && (
+                    <span className="text-xs text-muted-foreground">Akses penuh (terkunci)</span>
+                  )}
+                </div>
+                {loadingPerms ? (
+                  <div className="space-y-2 rounded-lg border border-border p-3">
+                    {[1, 2, 3].map((i) => <Skeleton key={i} className="h-8 w-full" />)}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-2 rounded-lg border border-border p-3 sm:grid-cols-2">
+                    {permissions.map((p) => (
                       <label
                         key={p.key}
                         className="flex items-start gap-2 rounded-md p-2 text-sm hover:bg-muted/50 cursor-pointer"
                       >
                         <Checkbox
-                          checked={checked}
-                          disabled={isBod}
-                          onCheckedChange={(c) =>
-                            togglePermission(p.key, c === true)
-                          }
+                          checked={getChecked(p.key)}
+                          disabled={isFullLocked}
+                          onCheckedChange={(c) => togglePermission(p.key, c === true)}
                           className="mt-0.5"
                         />
                         <div className="min-w-0">
                           <p className="font-medium text-foreground">{p.label}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {p.key}
-                          </p>
+                          <p className="text-xs text-muted-foreground">{p.key}</p>
                         </div>
                       </label>
-                    );
-                  })}
-                </div>
-                {values.role === "bod" && (
-                  <p className="text-xs text-muted-foreground">
-                    Role BOD bersifat read-only dan tidak dapat dikustomisasi.
-                  </p>
+                    ))}
+                  </div>
                 )}
               </div>
             )}
@@ -242,23 +242,16 @@ export function UserFormDialog({
           </form>
         </div>
 
-        {/* === BAGIAN 3: FOOTER (STICKY) === */}
-        <div className="p-6 pt-4 border-t border-border mt-2 bg-background">
+        <div className="p-6 pt-4 border-t border-border bg-background">
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Batal
             </Button>
-            {/* Atribut form="user-form" menghubungkan tombol ini dengan form di atas */}
             <Button type="submit" form="user-form" variant="primary">
               Simpan
             </Button>
           </DialogFooter>
         </div>
-
       </DialogContent>
     </Dialog>
   );

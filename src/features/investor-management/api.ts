@@ -4,15 +4,13 @@ import api from "@/shared/lib/axios";
 export async function fetchLinkableUsers(): Promise<LinkableUser[]> {
   try {
     const { data } = await api.get('/users?page=1&limit=100');
+    const userList = data?.data?.items ?? data?.data ?? data ?? [];
 
-    const userList = data?.data || data || [];
-
-    const investorUsers: LinkableUser[] = userList
-      .filter((u: any) => 
-        // Mengakomodasi berbagai kemungkinan nama variabel role dari backend
-        u.role?.role_name === "investor" || 
-        u.role_name === "investor" || 
-        u.role === "investor"
+    const linkableUsers: LinkableUser[] = userList
+      .filter((u: any) =>
+        u.role?.role_name === "user" ||
+        u.role_name === "user" ||
+        u.role === "user"
       )
       .map((u: any) => ({
         id: u.user_id || u.id,
@@ -20,10 +18,10 @@ export async function fetchLinkableUsers(): Promise<LinkableUser[]> {
         email: u.email,
       }));
 
-    return investorUsers;
+    return linkableUsers;
   } catch (error) {
-    console.error("Gagal mengambil data user dari API:", error);
-    return []; 
+    console.error("Gagal mengambil data user:", error);
+    return [];
   }
 }
 

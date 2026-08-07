@@ -4,12 +4,21 @@ import api from "./axios";
 interface JwtPayload {
   role: string;
   permissions: string[];
+  userId?: string;
   [key: string]: unknown;
+}
+
+function getTokenFromCookie(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = new RegExp(/(^|;\s*)access_token=([^;]+)/).exec(document.cookie);
+  return match ? decodeURIComponent(match[2]) : null;
 }
 
 export function getCurrentUser(): JwtPayload | null {
   if (typeof window === "undefined") return null;
-  const token = localStorage.getItem("access_token");
+  
+  // Prioritaskan cookie, fallback ke localStorage untuk kompatibilitas
+  const token = getTokenFromCookie() || localStorage.getItem("access_token");
   if (!token) return null;
   try {
     return jwtDecode<JwtPayload>(token);
@@ -19,22 +28,28 @@ export function getCurrentUser(): JwtPayload | null {
 }
 
 export async function fetchCurrentUserProfile() {
-  const user = getCurrentUser(); 
+  const user = getCurrentUser();
   if (!user) return null;
   const { data } = await api.get(`/users/${user.userId}`);
-  return data.data; 
+  return data.data;
 }
 
 export function hasPermission(permissionKey: string): boolean {
   const user = getCurrentUser();
+  if (user?.role === "superadmin") return true;
   return user?.permissions?.includes(permissionKey) ?? false;
 }
 
+export function getCurrentRole(): string | null {
+  return getCurrentUser()?.role ?? null;
+}
+
+// logout membersihkan cookie & localStorage, lalu redirect
 export function logout(redirectTo: string = "/") {
   if (typeof window === "undefined") return;
   localStorage.removeItem("access_token");
   localStorage.removeItem("refresh_token");
-  document.cookie = "access_token=; path=/; max-age=0"; // hapus cookie
+  document.cookie = "access_token=; path=/; max-age=0; SameSite=Lax";
   window.location.href = redirectTo;
 }
 
@@ -44,9 +59,6 @@ export async function forgotPassword(email: string) {
 }
 
 export async function resetPassword(token: string, newPassword: string) {
-  const { data } = await api.post("/auth/reset-password", {
-    token,
-    newPassword,
-  });
+  const { data } = await api.post("/auth/reset-password", { token, newPassword });
   return data;
 }

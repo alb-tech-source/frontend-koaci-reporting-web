@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtDecode } from "jwt-decode";
 
-const ADMIN_ROLES = new Set(["admin", "bod"]);
+const ADMIN_ROLES = new Set(["superadmin", "admin", "bod"]);
 const PROTECTED_PREFIX = "/admin";
 
 export function middleware(request: NextRequest) {

@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Search,
   Users,
+  Activity,
   type LucideIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -52,9 +53,10 @@ export interface AdminNavItem {
 }
 
 export const defaultAdminNav: AdminNavItem[] = [
-  { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/admin/investor", label: "Investor", icon: Users },
-  { to: "/admin/users", label: "Users", icon: Users },
+  { to: "/admin/dashboard",      label: "Dashboard",    icon: LayoutDashboard },
+  { to: "/admin/investor",       label: "Investor",     icon: Users },
+  { to: "/admin/users",          label: "Users",        icon: Users },
+  { to: "/admin/activity-log",   label: "Log Aktivitas", icon: Activity },
 ];
 
 interface AdminShellProps {

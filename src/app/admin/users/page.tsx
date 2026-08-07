@@ -4,7 +4,7 @@ import {
   queryOptions, 
   useSuspenseQuery, 
   useQueryClient, 
-  useMutation // 1. Tambahkan useMutation
+  useMutation 
 } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -15,7 +15,8 @@ import {
   Trash2,
   UserPlus,
   Users as UsersIcon,
-  Loader2, // 2. Tambahkan icon Loader2
+  Loader2, 
+  ShieldCheck,
 } from "lucide-react";
 import { Suspense, useEffect, useMemo, useState } from "react";
 
@@ -71,7 +72,7 @@ import {
   roleLabel,
   statusLabel,
 } from "@/features/user-management/utils";
-import { hasPermission } from "@/shared/lib/auth";
+import { hasPermission, getCurrentRole } from "@/shared/lib/auth";
 
 const usersQuery = queryOptions<AppUser[]>({
   queryKey: ["admin", "users"],
@@ -116,10 +117,16 @@ function UsersPageContent() {
   const { data: users } = useSuspenseQuery(usersQuery);
   const queryClient = useQueryClient();
 
+  const currentRole = getCurrentRole();
   const canCreate = hasPermission("users:create");
   const canUpdate = hasPermission("users:update");
   const canDelete = hasPermission("users:delete");
   const hasActions = canUpdate || canDelete;
+
+// Helper: BOD tidak bisa dihapus oleh siapapun
+const canDeleteUser = (target: AppUser): boolean => {
+  return canDelete && target.role !== "bod";
+};
   
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
@@ -206,7 +213,6 @@ function UsersPageContent() {
     }
   };
 
-  // 3. Ganti fungsi manual toggleStatus dengan useMutation
   const toggleMutation = useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
       toggleUserActivation(id, isActive),
@@ -218,12 +224,11 @@ function UsersPageContent() {
     },
   });
 
-  // 4. Ganti fungsi manual confirmDelete dengan useMutation
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteUser(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
-      setDeleteTarget(null); // Tutup dialog setelah berhasil dihapus
+      setDeleteTarget(null); 
     },
     onError: (error) => {
       console.error("Gagal menghapus pengguna:", error);
@@ -290,6 +295,7 @@ function UsersPageContent() {
                 <SelectItem value="all">Semua Role</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
                 <SelectItem value="investor">Investor</SelectItem>
+                <SelectItem value="superadmin">Super Admin</SelectItem>
                 <SelectItem value="bod">BOD</SelectItem>
               </SelectContent>
             </Select>
@@ -396,7 +402,7 @@ function UsersPageContent() {
                             </>
                           )}
 
-                          {canDelete && (
+                          {canDelete && canDeleteUser(u) && (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -404,6 +410,17 @@ function UsersPageContent() {
                               onClick={() => setDeleteTarget(u)}
                             >
                               <Trash2 className="h-4 w-4 text-danger" />
+                            </Button>
+                          )}
+                          {canDelete && !canDeleteUser(u) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label="BOD tidak dapat dihapus"
+                              disabled
+                              title="Akun BOD tidak dapat dihapus"
+                            >
+                              <ShieldCheck className="h-4 w-4 text-muted-foreground/40" />
                             </Button>
                           )}
                           

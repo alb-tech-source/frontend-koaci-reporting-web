@@ -1,5 +1,5 @@
 // src/app/(admin)/layout.tsx
-import { AdminShell } from "@/shared/components/layout/AdminShell";
+import { AdminShell } from "@/components/layout/AdminShell";
 
 export default function AdminLayout({
   children,

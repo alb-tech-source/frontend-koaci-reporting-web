@@ -1,6 +1,8 @@
-import Link from "next/link";
+"use client"; 
+
 import { ShieldAlert } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
+import { logout } from "@/shared/lib/auth"; 
 
 export default function UnauthorizedPage() {
   return (
@@ -15,8 +17,8 @@ export default function UnauthorizedPage() {
           administrator jika Anda merasa ini kesalahan.
         </p>
       </div>
-      <Button asChild variant="primary">
-        <Link href="/">Kembali ke Halaman Masuk</Link>
+      <Button variant="primary" onClick={() => logout("/")}>
+        Kembali ke Halaman Masuk
       </Button>
     </div>
   );
