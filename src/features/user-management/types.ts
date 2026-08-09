@@ -12,6 +12,7 @@ export const PERMISSIONS_FALLBACK = [
 export type PermissionKey = string; 
 
 export interface Permission {
+  id: string;
   key: string;
   label: string;
 }

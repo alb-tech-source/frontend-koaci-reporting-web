@@ -1,10 +1,11 @@
 "use client";
 
-import { 
-  queryOptions, 
-  useSuspenseQuery, 
-  useQueryClient, 
-  useMutation 
+import {
+  queryOptions,
+  useSuspenseQuery,
+  useQueryClient,
+  useMutation,
+  useQuery, 
 } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -15,7 +16,7 @@ import {
   Trash2,
   UserPlus,
   Users as UsersIcon,
-  Loader2, 
+  Loader2,
   ShieldCheck,
 } from "lucide-react";
 import { Suspense, useEffect, useMemo, useState } from "react";
@@ -52,12 +53,13 @@ import { cn } from "@/shared/lib/utils";
 import { UserFormDialog } from "@/features/user-management/UserFormDialog";
 import { NewUserSuccessDialog } from "@/features/user-management/NewUserSuccessDialog";
 
-import { 
-  fetchUsers, 
-  createUser, 
-  updateUser, 
-  toggleUserActivation, 
-  deleteUser 
+import {
+  fetchUsers,
+  createUser,
+  updateUser,
+  toggleUserActivation,
+  deleteUser,
+  fetchPermissions,
 } from "@/features/user-management/api";
 
 import type {
@@ -81,7 +83,8 @@ const usersQuery = queryOptions<AppUser[]>({
 
 export default function AdminPenggunaPage() {
   const [mounted, setMounted] = useState(false);
-    
+  const role = getCurrentRole();
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -90,7 +93,10 @@ export default function AdminPenggunaPage() {
     return <PageSkeleton />;
   }
 
-  if (!hasPermission("users:read")) {
+  const isExecutive = ["superadmin", "bod"].includes(role ?? "");
+  const hasAccess = hasPermission("users:read") || isExecutive;
+
+  if (!hasAccess) {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center text-center">
         <div className="mb-4 grid h-12 w-12 place-items-center rounded-full bg-danger/10 text-danger">
@@ -118,16 +124,23 @@ function UsersPageContent() {
   const queryClient = useQueryClient();
 
   const currentRole = getCurrentRole();
-  const canCreate = hasPermission("users:create");
-  const canUpdate = hasPermission("users:update");
-  const canDelete = hasPermission("users:delete");
+  const isExecutive = ["superadmin", "bod"].includes(currentRole ?? "");
+
+  const canCreate = hasPermission("users:create") || isExecutive;
+  const canUpdate = hasPermission("users:update") || isExecutive;
+  const canDelete = hasPermission("users:delete") || isExecutive;
   const hasActions = canUpdate || canDelete;
 
-// Helper: BOD tidak bisa dihapus oleh siapapun
-const canDeleteUser = (target: AppUser): boolean => {
-  return canDelete && target.role !== "bod";
-};
-  
+  const { data: permissionsList = [] } = useQuery({
+    queryKey: ["permissions"],
+    queryFn: fetchPermissions,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const canDeleteUser = (target: AppUser): boolean => {
+    return canDelete && target.role !== "bod";
+  };
+
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
   const [statusFilter, setStatusFilter] = useState<UserStatus | "all">("all");
@@ -175,26 +188,33 @@ const canDeleteUser = (target: AppUser): boolean => {
   const handleSubmit = async (values: UserFormValues) => {
     try {
       if (formMode === "edit" && editing) {
-        await updateUser(editing.id, {
-          firstname: values.firstName,
-          lastname: values.lastName,
-          email: values.email,
-          role_name: values.role,
-          permission_ids: values.permissions,
-          is_active: values.activate,
-        });
-        
+        await updateUser(
+          editing.id,
+          {
+            firstname: values.firstName,
+            lastname: values.lastName,
+            email: values.email,
+            role_name: values.role,
+            permission_ids: values.permissions,
+            is_active: values.activate,
+          },
+          permissionsList
+        );
+
         queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
         setFormOpen(false);
       } else {
-        const response = await createUser({
-          firstname: values.firstName,
-          lastname: values.lastName,
-          email: values.email,
-          role_name: values.role,
-          permission_ids: values.permissions,
-          is_active: values.activate,
-        });
+        const response = await createUser(
+          {
+            firstname: values.firstName,
+            lastname: values.lastName,
+            email: values.email,
+            role_name: values.role,
+            permission_ids: values.permissions,
+            is_active: values.activate,
+          },
+          permissionsList 
+        );
 
         queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
         setFormOpen(false);
@@ -205,7 +225,7 @@ const canDeleteUser = (target: AppUser): boolean => {
         setCreatedUser({
           fullName: `${values.firstName} ${values.lastName}`.trim(),
           email: values.email,
-          password: tempPassword, 
+          password: tempPassword,
         });
       }
     } catch (error) {
@@ -228,7 +248,7 @@ const canDeleteUser = (target: AppUser): boolean => {
     mutationFn: (id: string) => deleteUser(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
-      setDeleteTarget(null); 
+      setDeleteTarget(null);
     },
     onError: (error) => {
       console.error("Gagal menghapus pengguna:", error);
@@ -262,7 +282,6 @@ const canDeleteUser = (target: AppUser): boolean => {
       </header>
 
       <div className="rounded-2xl border border-border bg-background shadow-card">
-        {/* ... (Bagian Filter & Search tetap sama) ... */}
         <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative w-full sm:max-w-sm">
             <Search
@@ -373,7 +392,6 @@ const canDeleteUser = (target: AppUser): boolean => {
                     {hasActions && (
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          
                           {canUpdate && (
                             <>
                               <Button
@@ -384,8 +402,6 @@ const canDeleteUser = (target: AppUser): boolean => {
                               >
                                 <Pencil className="h-4 w-4" />
                               </Button>
-                              
-                              {/* 5. Terapkan Loading State di Tombol Toggle */}
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -423,7 +439,6 @@ const canDeleteUser = (target: AppUser): boolean => {
                               <ShieldCheck className="h-4 w-4 text-muted-foreground/40" />
                             </Button>
                           )}
-                          
                         </div>
                       </TableCell>
                     )}
@@ -478,6 +493,7 @@ const canDeleteUser = (target: AppUser): boolean => {
         mode={formMode}
         initialUser={editing}
         onSubmit={handleSubmit}
+        currentUserRole={currentRole ?? "admin"}
       />
 
       <NewUserSuccessDialog
@@ -488,7 +504,6 @@ const canDeleteUser = (target: AppUser): boolean => {
         password={createdUser?.password ?? ""}
       />
 
-      {/* 6. Terapkan Loading State di Modal Konfirmasi Hapus */}
       <Dialog
         open={deleteTarget !== null}
         onOpenChange={(o) => !o && setDeleteTarget(null)}
@@ -514,15 +529,15 @@ const canDeleteUser = (target: AppUser): boolean => {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setDeleteTarget(null)}
               disabled={deleteMutation.isPending}
             >
               Batalkan
             </Button>
-            <Button 
-              variant="danger" 
+            <Button
+              variant="danger"
               onClick={confirmDelete}
               disabled={deleteMutation.isPending}
             >
@@ -543,7 +558,6 @@ const canDeleteUser = (target: AppUser): boolean => {
 }
 
 function EmptyState({ onAdd }: Readonly<{ onAdd: () => void }>) {
-  // ... (Sama seperti sebelumnya) ...
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
       <div className="grid h-14 w-14 place-items-center rounded-full bg-muted">
@@ -564,7 +578,6 @@ function EmptyState({ onAdd }: Readonly<{ onAdd: () => void }>) {
 }
 
 function PageSkeleton() {
-  // ... (Sama seperti sebelumnya) ...
   return (
     <div className="space-y-4">
       <Skeleton className="h-8 w-64" />
