@@ -8,19 +8,29 @@ export async function fetchLinkableUsers(): Promise<LinkableUser[]> {
 
     try {
       const usersRes = await api.get("/users?page=1&limit=100");
-      allUsers = usersRes.data?.data?.items ?? usersRes.data?.data ?? usersRes.data ?? [];
+      allUsers =
+        usersRes.data?.data?.items ??
+        usersRes.data?.data ??
+        usersRes.data ??
+        [];
     } catch (usersErr) {
       console.error("Gagal mengambil data dari /users:", usersErr);
     }
 
     try {
-      const investorsRes = await api.get("/investors?page=1&limit=100"); 
-      existingInvestors = investorsRes.data?.data?.items ?? investorsRes.data?.data ?? investorsRes.data ?? [];
+      const investorsRes = await api.get("/investors?page=1&limit=100");
+      existingInvestors =
+        investorsRes.data?.data?.items ??
+        investorsRes.data?.data ??
+        investorsRes.data ??
+        [];
     } catch (investorsErr) {
       console.error("Gagal mengambil data dari /investors:", investorsErr);
     }
 
-    const linkedUserIds = new Set(existingInvestors.map((inv: any) => inv.user_id));
+    const linkedUserIds = new Set(
+      existingInvestors.map((inv: any) => inv.user_id),
+    );
 
     // Filter yang Diperketat: Belum punya profil dan role-nya tepat
     const linkableUsers: LinkableUser[] = allUsers
@@ -29,8 +39,13 @@ export async function fetchLinkableUsers(): Promise<LinkableUser[]> {
         const isNotLinked = !linkedUserIds.has(u.user_id || u.id);
 
         // Menangkap nilai role dari berbagai kemungkinan format Backend
-        const roleName = (u.role?.role_name || u.role_name || u.role || "").toLowerCase();
-        
+        const roleName = (
+          u.role?.role_name ||
+          u.role_name ||
+          u.role ||
+          ""
+        ).toLowerCase();
+
         // Hanya izinkan role "user" dan "investor" (Kecualikan Admin/BOD)
         const isEligibleRole = roleName === "user" || roleName === "investor";
 
@@ -49,8 +64,12 @@ export async function fetchLinkableUsers(): Promise<LinkableUser[]> {
   }
 }
 
-export async function fetchInvestors(page = 1, search = "", status = "all"): Promise<Investor[]> {
-  const params: any = { page, limit: 100 }; 
+export async function fetchInvestors(
+  page = 1,
+  search = "",
+  status = "all",
+): Promise<Investor[]> {
+  const params: any = { page, limit: 100 };
   if (search) params.search = search;
   if (status !== "all") params.status = status;
 
@@ -58,32 +77,36 @@ export async function fetchInvestors(page = 1, search = "", status = "all"): Pro
 
   const investorList = data?.data?.items ?? data?.data ?? data ?? [];
 
-  return investorList.map((inv: any): Investor => ({
-    id: inv.investor_id,
-    userId: inv.user_id,
-    name: inv.full_name,
-    email: inv.email, 
-    phone: inv.phone,
-    investorType: inv.investor_type,
-    gender: inv.gender,
-    nik: inv.nik,
-    address: inv.address,
-    accountNumber: inv.account_number,
-    bankName: inv.bank_name,
-    totalInvestasi: inv.total_investasi || 0, 
-    status: inv.status,
-    joinedAt: inv.createdAt ? inv.createdAt.slice(0, 10) : new Date().toISOString().slice(0, 10),
-    heir: {
-      name: inv.heir_name || "",
-      relation: inv.heir_relationship || "",
-      nik: inv.heir_nik || "",
-      address: inv.heir_address || "",
-      accountNumber: inv.heir_account_number || "",
-      bankName: inv.heir_bank_name || "",
-      phone: inv.heir_phone || "",
-    },
-    documentName: inv.InvestorDocument?.[0]?.document_name || undefined,
-  }));
+  return investorList.map(
+    (inv: any): Investor => ({
+      id: inv.investor_id,
+      userId: inv.user_id,
+      name: inv.full_name,
+      email: inv.email,
+      phone: inv.phone,
+      investorType: inv.investor_type,
+      gender: inv.gender,
+      nik: inv.nik,
+      address: inv.address,
+      accountNumber: inv.account_number,
+      bankName: inv.bank_name,
+      totalInvestasi: inv.total_investasi || 0,
+      status: inv.status,
+      joinedAt: inv.createdAt
+        ? inv.createdAt.slice(0, 10)
+        : new Date().toISOString().slice(0, 10),
+      heir: {
+        name: inv.heir_name || "",
+        relation: inv.heir_relationship || "",
+        nik: inv.heir_nik || "",
+        address: inv.heir_address || "",
+        accountNumber: inv.heir_account_number || "",
+        bankName: inv.heir_bank_name || "",
+        phone: inv.heir_phone || "",
+      },
+      documentName: inv.InvestorDocument?.[0]?.document_name || undefined,
+    }),
+  );
 }
 
 // Fungsi POST Create Investor
@@ -91,7 +114,7 @@ export async function createInvestor(payload: InvestorFormValues) {
   const apiPayload = {
     user_id: payload.userId,
     investor_type: payload.investorType,
-    status: "pending",
+    status: payload.status,
     gender: payload.gender,
     nik: payload.nik,
     address: payload.address,
@@ -112,7 +135,10 @@ export async function createInvestor(payload: InvestorFormValues) {
   return data;
 }
 
-export async function updateInvestor(investorId: string, payload: Partial<InvestorFormValues>) {
+export async function updateInvestor(
+  investorId: string,
+  payload: Partial<InvestorFormValues>,
+) {
   const apiPayload = {
     investor_type: payload.investorType,
     gender: payload.gender,
@@ -121,7 +147,7 @@ export async function updateInvestor(investorId: string, payload: Partial<Invest
     phone: payload.phone,
     account_number: payload.accountNumber,
     bank_name: payload.bankName,
-    // status: payload.status, 
+    // status: payload.status,
   };
 
   const { data } = await api.put(`/investors/${investorId}`, apiPayload);
@@ -129,15 +155,21 @@ export async function updateInvestor(investorId: string, payload: Partial<Invest
 }
 
 export async function updateInvestorStatus(investorId: string, status: string) {
-  const { data } = await api.patch(`/investors/${investorId}/status`, { status });
+  const { data } = await api.patch(`/investors/${investorId}/status`, {
+    status,
+  });
   return data;
 }
 
-export async function uploadInvestorDocument(investorId: string, documentName: string, file: File) {
+export async function uploadInvestorDocument(
+  investorId: string,
+  documentName: string,
+  file: File,
+) {
   const formData = new FormData();
   formData.append("investor_id", investorId);
   formData.append("document_name", documentName);
-  formData.append("storage_provider", "local"); 
+  formData.append("storage_provider", "local");
   formData.append("file", file);
 
   const { data } = await api.post("/investors/documents", formData, {

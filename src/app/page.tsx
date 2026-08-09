@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader } from "@/shared/components/ui/card";
 import { KoaciLogo } from "@/shared/components/KoaciLogo";
 import { LoginForm, type LoginFormValues } from "@/features/auth/LoginForm";
 import api from "@/shared/lib/axios";
+import axios from "axios";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -25,7 +26,12 @@ export default function AdminLoginPage() {
       localStorage.setItem("refresh_token", refreshToken);
 
       router.push("/admin/dashboard");
-    } catch {
+    } catch (err: any) {
+      if (axios.isAxiosError(err)) {
+        const message = err.response?.data;
+        console.log(err);
+        setError(message);
+      }
       setError("Email atau password salah.");
     } finally {
       setLoading(false);
@@ -34,21 +40,28 @@ export default function AdminLoginPage() {
 
   return (
     <main className="flex min-h-screen w-full items-center justify-center bg-gray-50 px-4 py-12">
-      
       {/* Card langsung diletakkan di dalam main */}
       <Card className="w-full max-w-[400px] shadow-elevated">
         <CardHeader className="space-y-4 pb-2 text-center">
           <KoaciLogo size="md" showText className="justify-center" />
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Koaci Admin</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Masuk ke Reporting Console</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              Koaci Admin
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Masuk ke Reporting Console
+            </p>
           </div>
         </CardHeader>
         <CardContent className="pt-6">
-          <LoginForm variant="admin" loading={loading} errorMessage={error} onSubmit={handleLogin} />
+          <LoginForm
+            variant="admin"
+            loading={loading}
+            errorMessage={error}
+            onSubmit={handleLogin}
+          />
         </CardContent>
       </Card>
-
     </main>
   );
 }

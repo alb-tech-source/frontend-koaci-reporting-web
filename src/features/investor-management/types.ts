@@ -44,6 +44,7 @@ export interface InvestorFormValues {
   accountNumber: string;
   bankName: string;
   documentName?: string;
+  status: string;
   heir: HeirData;
 }
 

@@ -74,6 +74,7 @@ const emptyValues: InvestorFormValues = {
   accountNumber: "",
   bankName: "",
   documentName: "",
+  status: "",
   heir: { ...emptyHeirData },
 };
 
@@ -106,6 +107,7 @@ export function InvestorFormDialog({
         accountNumber: initialValue.accountNumber,
         bankName: initialValue.bankName,
         documentName: initialValue.documentName ?? "",
+        status: initialValue.status,
         heir: initialValue.heir ?? { ...emptyHeirData },
       });
     } else {
@@ -147,7 +149,7 @@ export function InvestorFormDialog({
       return;
     }
     if (!values.userId || !values.bankName) return;
-    
+
     // UPDATE: Kirim nilai teks DAN file fisiknya
     onSubmit(values, selectedFile);
   };
@@ -324,8 +326,8 @@ export function InvestorFormDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="individu">Individu</SelectItem>
-                  <SelectItem value="korporasi">Korporasi</SelectItem>
+                  <SelectItem value="individual">Individu</SelectItem>
+                  <SelectItem value="corporation">Korporasi</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -341,8 +343,8 @@ export function InvestorFormDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="male">Laki-laki</SelectItem>
-                  <SelectItem value="female">Perempuan</SelectItem>
+                  <SelectItem value="men">Laki-laki</SelectItem>
+                  <SelectItem value="women">Perempuan</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -393,6 +395,27 @@ export function InvestorFormDialog({
                       {bank}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>
+                Status Akun <span className="text-danger">*</span>
+              </Label>
+              <Select
+                value={values.status}
+                onValueChange={(v) => set("status", v as string)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Aktif</SelectItem>
+                  <SelectItem value="inactive">Tidak Aktif</SelectItem>
+                  <SelectItem value="blacklist">Blacklist</SelectItem>
                 </SelectContent>
               </Select>
             </div>
