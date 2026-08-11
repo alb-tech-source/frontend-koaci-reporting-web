@@ -1,6 +1,6 @@
-export type InvestorStatus = "active" | "pending" | "inactive";
-export type InvestorType = "individu" | "korporasi";
-export type Gender = "male" | "female";
+export type InvestorType = "individual" | "corporation";
+export type Gender = "men" | "women";
+export type InvestorStatus = "active" | "inactive" | "blacklist";
 export type HeirRelation = "spouse" | "child" | "parent" | "sibling" | "other";
 
 export interface HeirData {

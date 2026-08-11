@@ -4,7 +4,6 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Activity, AlertTriangle, Search } from "lucide-react";
 import { Suspense, useState, useEffect } from "react";
 
-import { AdminShell } from "@/components/layout/AdminShell";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
@@ -40,11 +39,9 @@ import { cn } from "@/shared/lib/utils";
 const PAGE_SIZE = 20;
 
 export default function ActivityLogRoute() {
-  const role = getCurrentRole();
-  if (!["superadmin", "bod"].includes(role ?? "")) {
-    return (
-        <AccessDenied />
-    );
+  const currentRole = getCurrentRole();
+  if (currentRole !== "bod") {  
+    return <AccessDenied />;
   }
 
   return (
@@ -90,10 +87,10 @@ function ActivityLogPage() {
       }),
   });
 
-  const pageItems = data.data.items;
-  const totalItems = data.data.total;
-  const totalPages = data.data.totalPages;
-  const currentPage = data.data.page;
+  const pageItems = data?.data?.items ?? [];
+  const totalItems = data?.data?.total ?? 0;
+  const totalPages = data?.data?.totalPages ?? 1;
+  const currentPage = data?.data?.page ?? 1;
 
   const resetPage = () => setPage(1);
 
@@ -206,7 +203,6 @@ function ActivityLogPage() {
                     </TableCell>
                     <TableCell>
                       <div className="font-medium text-foreground">{log.userName}</div>
-                      <div className="text-xs text-muted-foreground">{log.userId}</div>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={cn(roleBadgeClass(log.userRole))}>
@@ -274,7 +270,7 @@ function EmptyState() {
   );
 }
 
-function AccessDenied() { 
+function AccessDenied({ message }: Readonly<{ message?: string }>) { 
   return (
     <div className="mx-auto max-w-md rounded-2xl border border-border bg-background p-8 text-center shadow-card">
       <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-danger/10">
@@ -282,7 +278,7 @@ function AccessDenied() {
       </div>
       <h1 className="text-lg font-semibold text-foreground">Akses Ditolak</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Halaman Log Aktivitas hanya dapat diakses oleh Super Admin dan BOD.
+        {message ?? "Halaman Log Aktivitas hanya dapat diakses oleh BOD."}
       </p>
     </div>
   );

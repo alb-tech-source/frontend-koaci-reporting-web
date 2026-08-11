@@ -28,11 +28,11 @@ export default function AdminLoginPage() {
       router.push("/admin/dashboard");
     } catch (err: any) {
       if (axios.isAxiosError(err)) {
-        const message = err.response?.data;
-        console.log(err);
-        setError(message);
+        const backendMessage = err.response?.data?.message; // sesuaikan nama field setelah cek Swagger
+        setError(backendMessage || "Email atau password salah.");
+      } else {
+        setError("Terjadi kesalahan. Coba lagi.");
       }
-      setError("Email atau password salah.");
     } finally {
       setLoading(false);
     }

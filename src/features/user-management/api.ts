@@ -16,49 +16,25 @@ function toPermissionIds(
 }
 
 export async function fetchUsers(page: number, limit = 10): Promise<AppUser[]> {
-  const { data } = await api.get(`/users?page=${page}&limit=${limit}`);
-  const items: ApiUser[] = data.data?.items ?? data.data ?? [];
-  return items.map(mapApiUserToAppUser);
+  try {
+    const { data } = await api.get(`/users?page=${page}&limit=${limit}`);
+    const items: ApiUser[] = data.data?.items ?? data.data ?? [];
+    return items.map(mapApiUserToAppUser);
+  } catch (error) {
+    console.error("Gagal mengambil data dari GET /users:", error);
+    
+    return [];
+  }
 }
 
 export async function fetchPermissions(): Promise<Permission[]> {
-  try {
-    const { data } = await api.get("/permissions/all");
-    const list = data.data ?? data ?? [];
-    return list.map((p: any) => ({
-      id: p.permission_id ?? p.id ?? p.permission_key, // Wajib ada ID untuk mapping
-      key: p.permission_key ?? p.key,
-      label: p.permission_name ?? p.label ?? p.permission_key,
-    }));
-  } catch {
-    return [
-      {
-        id: "1d974091-8057-4a32-970a-...",
-        key: "users:read",
-        label: "Lihat Data Pengguna",
-      },
-      {
-        id: "2e3e53f4-de4e-4cf4-982b-...",
-        key: "users:create",
-        label: "Tambah Pengguna",
-      },
-      {
-        id: "8f355d73-9294-4fa7-9d2a-...",
-        key: "users:update",
-        label: "Ubah Data Pengguna",
-      },
-      {
-        id: "901f2af4-71ae-4a98-9a3d-...",
-        key: "users:delete",
-        label: "Hapus Pengguna",
-      },
-      {
-        id: "b480ba4f-0569-43d1-9a6e-...",
-        key: "users:manage_roles",
-        label: "Kelola Role & Izin",
-      },
-    ];
-  }
+  const { data } = await api.get("/permissions/all");
+  const list = data.data ?? data ?? [];
+  return list.map((p: any) => ({
+    id: p.permission_id ?? p.id,
+    key: p.permission_key ?? p.key,
+    label: p.permission_name ?? p.label ?? p.permission_key,
+  }));
 }
 
 export async function createUser(

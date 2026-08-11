@@ -69,44 +69,60 @@ export async function fetchInvestors(
   search = "",
   status = "all",
 ): Promise<Investor[]> {
-  const params: any = { page, limit: 100 };
-  if (search) params.search = search;
-  if (status !== "all") params.status = status;
+  try {
+    const params: any = { page, limit: 100 };
+    if (search) params.search = search;
+    if (status !== "all") params.status = status;
 
-  const { data } = await api.get("/investors", { params });
+    const { data } = await api.get("/investors", { params });
+    const investorList = data?.data?.items ?? data?.data ?? data ?? [];
 
-  const investorList = data?.data?.items ?? data?.data ?? data ?? [];
+    return investorList.map((inv: any): Investor => {
+      // 1. Ekstrak nama dari objek bersarang 'user'
+      const firstName = inv.user?.firstname || "";
+      const lastName = inv.user?.lastname || "";
+      const combinedName = `${firstName} ${lastName}`.trim();
 
-  return investorList.map(
-    (inv: any): Investor => ({
-      id: inv.investor_id,
-      userId: inv.user_id,
-      name: inv.full_name,
-      email: inv.email,
-      phone: inv.phone,
-      investorType: inv.investor_type,
-      gender: inv.gender,
-      nik: inv.nik,
-      address: inv.address,
-      accountNumber: inv.account_number,
-      bankName: inv.bank_name,
-      totalInvestasi: inv.total_investasi || 0,
-      status: inv.status,
-      joinedAt: inv.createdAt
-        ? inv.createdAt.slice(0, 10)
-        : new Date().toISOString().slice(0, 10),
-      heir: {
-        name: inv.heir_name || "",
-        relation: inv.heir_relationship || "",
-        nik: inv.heir_nik || "",
-        address: inv.heir_address || "",
-        accountNumber: inv.heir_account_number || "",
-        bankName: inv.heir_bank_name || "",
-        phone: inv.heir_phone || "",
-      },
-      documentName: inv.InvestorDocument?.[0]?.document_name || undefined,
-    }),
-  );
+      return {
+        // 2. Tangkap semua kemungkinan variasi ID dari peladen
+        id: inv.investor_id || inv.id || inv.investorId,
+        userId: inv.user_id || inv.userId || inv.user?.user_id || inv.user?.id,
+
+        // 3. Prioritaskan nama dan email dari objek 'user'
+        name: combinedName || inv.full_name || inv.fullName || "Tanpa Nama",
+        email: inv.user?.email || inv.email || "-", 
+        
+        phone: inv.phone || "-",
+        investorType: inv.investor_type || inv.investorType || "individual",
+        gender: inv.gender || "men",
+        nik: inv.nik || "-",
+        address: inv.address || "-",
+        accountNumber: inv.account_number || inv.accountNumber || "-",
+        bankName: inv.bank_name || inv.bankName || "-",
+        totalInvestasi: inv.total_investasi || inv.totalInvestasi || 0, 
+        status: inv.status || "inactive",
+        joinedAt: inv.createdAt ? inv.createdAt.slice(0, 10) : new Date().toISOString().slice(0, 10),
+        
+        // Tangkap juga variasi snake_case/camelCase untuk Ahli Waris
+        heir: {
+          name: inv.heir_name || inv.heirName || "",
+          relation: inv.heir_relationship || inv.heirRelationship || "",
+          nik: inv.heir_nik || inv.heirNik || "",
+          address: inv.heir_address || inv.heirAddress || "",
+          accountNumber: inv.heir_account_number || inv.heirAccountNumber || "",
+          bankName: inv.heir_bank_name || inv.heirBankName || "",
+          phone: inv.heir_phone || inv.heirPhone || "",
+        },
+        documentName: inv.InvestorDocument?.[0]?.document_name || undefined,
+      };
+    });
+  } catch (error) {
+    // Cegat error 500 di sini agar UI tidak meledak
+    console.error("Gagal mengambil data dari GET /investors:", error);
+    
+    // Kembalikan array kosong agar tabel render dengan status "Belum ada data"
+    return []; 
+  }
 }
 
 // Fungsi POST Create Investor
@@ -121,7 +137,6 @@ export async function createInvestor(payload: InvestorFormValues) {
     phone: payload.phone,
     account_number: payload.accountNumber,
     bank_name: payload.bankName,
-
     heir_name: payload.heir.name || undefined,
     heir_relationship: payload.heir.relation || undefined,
     heir_nik: payload.heir.nik || undefined,
@@ -175,5 +190,10 @@ export async function uploadInvestorDocument(
   const { data } = await api.post("/investors/documents", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
+  return data;
+}
+
+export async function deleteInvestor(investorId: string) {
+  const { data } = await api.delete(`/investors/${investorId}`);
   return data;
 }

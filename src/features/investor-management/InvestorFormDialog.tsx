@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronsUpDown, Upload } from "lucide-react";
+import { Check, ChevronsUpDown, Upload, Loader2 } from "lucide-react";
 
 import { Button } from "@/shared/components/ui/button";
 import {
@@ -55,11 +55,11 @@ import type {
 interface InvestorFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  // UPDATE: Tambahkan parameter file opsional pada fungsi onSubmit
   onSubmit: (input: InvestorFormValues, file?: File | null) => void;
   users: LinkableUser[];
   mode?: "create" | "edit";
   initialValue?: Investor | null;
+  isSubmitting?: boolean;
 }
 
 const emptyValues: InvestorFormValues = {
@@ -67,14 +67,14 @@ const emptyValues: InvestorFormValues = {
   name: "",
   email: "",
   phone: "",
-  investorType: "individu",
-  gender: "male",
+  investorType: "individual",
+  gender: "men",
   nik: "",
   address: "",
   accountNumber: "",
   bankName: "",
   documentName: "",
-  status: "",
+  status: "inactive",
   heir: { ...emptyHeirData },
 };
 
@@ -85,9 +85,10 @@ export function InvestorFormDialog({
   users,
   mode = "create",
   initialValue = null,
+  isSubmitting = false,
 }: Readonly<InvestorFormDialogProps>) {
   const [values, setValues] = useState<InvestorFormValues>(emptyValues);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null); // State penyimpan file fisik
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [userPickerOpen, setUserPickerOpen] = useState(false);
   const [nikError, setNikError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -114,7 +115,7 @@ export function InvestorFormDialog({
       setValues({ ...emptyValues, heir: { ...emptyHeirData } });
     }
     setNikError("");
-    setSelectedFile(null); // Reset file saat pop-up dibuka ulang
+    setSelectedFile(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }, [open, initialValue]);
 
@@ -148,9 +149,8 @@ export function InvestorFormDialog({
       setNikError("NIK harus terdiri dari 16 digit angka.");
       return;
     }
-    if (!values.userId || !values.bankName) return;
+    if (!values.userId || !values.bankName || !values.status) return;
 
-    // UPDATE: Kirim nilai teks DAN file fisiknya
     onSubmit(values, selectedFile);
   };
 
@@ -444,7 +444,6 @@ export function InvestorFormDialog({
                 accept=".pdf,.jpg,.jpeg,.png"
                 className="hidden"
                 onChange={(e) => {
-                  // UPDATE: Tangkap objek filenya di sini
                   const file = e.target.files?.[0];
                   if (file) {
                     setSelectedFile(file);
@@ -569,11 +568,26 @@ export function InvestorFormDialog({
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
+            disabled={isSubmitting}
           >
             Batal
           </Button>
-          <Button type="submit" form="investor-form" variant="primary">
-            {mode === "edit" ? "Simpan Perubahan" : "Simpan Investor"}
+          <Button 
+            type="submit" 
+            form="investor-form" 
+            variant="primary"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Menyimpan...
+              </>
+            ) : mode === "edit" ? (
+              "Simpan Perubahan"
+            ) : (
+              "Simpan Investor"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

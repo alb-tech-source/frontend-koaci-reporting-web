@@ -6,8 +6,15 @@ import {
   useQueryClient,
   useMutation,
 } from "@tanstack/react-query";
-import { MoreHorizontal, Plus, Search, AlertTriangle } from "lucide-react";
+import { 
+  MoreHorizontal, 
+  Plus, 
+  Search, 
+  AlertTriangle,
+  Loader2 
+} from "lucide-react";
 import { Suspense, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner"; // Import toast untuk notifikasi sukses/gagal
 
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
@@ -34,6 +41,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/components/ui/dialog";
 
 import { InvestorFormDialog } from "@/features/investor-management/InvestorFormDialog";
 import {
@@ -42,6 +57,7 @@ import {
   createInvestor,
   updateInvestor,
   uploadInvestorDocument,
+  deleteInvestor, 
 } from "@/features/investor-management/api";
 import type {
   Investor,
@@ -65,7 +81,7 @@ const linkableUsersQuery = queryOptions({
   queryFn: fetchLinkableUsers,
 });
 
-const PAGE_SIZE = 4;
+const PAGE_SIZE = 10;
 
 export default function InvestorPage() {
   const [mounted, setMounted] = useState(false);
@@ -78,7 +94,6 @@ export default function InvestorPage() {
     return <TableSkeleton />;
   }
 
-  // Security Guard: Blokir akses halaman jika tidak punya izin "investors:read"
   if (!hasPermission("investors:read")) {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center text-center">
@@ -105,7 +120,6 @@ function InvestorListPage() {
   const { data: users } = useSuspenseQuery(linkableUsersQuery);
   const queryClient = useQueryClient();
 
-  // Element-Level Authorization: Kontrol aksi berdasarkan izin
   const canCreate = hasPermission("investors:create");
   const canUpdate = hasPermission("investors:update");
   const canDelete = hasPermission("investors:delete");
@@ -116,8 +130,10 @@ function InvestorListPage() {
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Investor | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Investor | null>(null);
+  const [viewing, setViewing] = useState<Investor | null>(null);
 
-  // MUTASI CREATE DENGAN CHAINED FILE UPLOAD
+  // --- MUTASI CREATE ---
   const createMutation = useMutation({
     mutationFn: async ({
       input,
@@ -126,12 +142,9 @@ function InvestorListPage() {
       input: InvestorFormValues;
       file?: File | null;
     }) => {
-      // 1. Tembak API Create Investor
       const response = await createInvestor(input);
-      const newInvestorId =
-        response?.data?.investor_id || response?.investor_id;
+      const newInvestorId = response?.data?.investor_id || response?.investor_id;
 
-      // 2. Jika sukses dan ada file yang dipilih, otomatis tembak API Upload Document
       if (file && newInvestorId) {
         await uploadInvestorDocument(
           newInvestorId,
@@ -143,15 +156,17 @@ function InvestorListPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "investors"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "investors", "linkable-users"] });
+      toast.success("Investor berhasil ditambahkan!");
       setOpen(false);
     },
     onError: (error) => {
       console.error("Gagal menyimpan investor:", error);
-      alert("Terjadi kesalahan saat menyimpan data. Coba lagi.");
+      toast.error("Terjadi kesalahan saat menyimpan data.");
     },
   });
 
-  // MUTASI UPDATE DENGAN FILE UPLOAD
+  // --- MUTASI UPDATE ---
   const updateMutation = useMutation({
     mutationFn: async ({
       id,
@@ -162,10 +177,7 @@ function InvestorListPage() {
       payload: InvestorFormValues;
       file?: File | null;
     }) => {
-      // 1. Update data teks
       const response = await updateInvestor(id, payload);
-
-      // 2. Jika edit juga menyisipkan file baru, upload file-nya
       if (file) {
         await uploadInvestorDocument(
           id,
@@ -177,12 +189,28 @@ function InvestorListPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "investors"] });
+      toast.success("Data investor berhasil diperbarui!");
       setOpen(false);
       setEditing(null);
     },
     onError: (error) => {
       console.error("Gagal mengupdate investor:", error);
-      alert("Terjadi kesalahan saat memperbarui data. Coba lagi.");
+      toast.error("Terjadi kesalahan saat memperbarui data.");
+    },
+  });
+
+  // --- MUTASI DELETE ---
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteInvestor(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "investors"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "investors", "linkable-users"] });
+      toast.success("Investor berhasil dihapus!");
+      setDeleteTarget(null); // Tutup modal
+    },
+    onError: (error) => {
+      console.error("Gagal menghapus investor:", error);
+      toast.error("Terjadi kesalahan saat menghapus data investor.");
     },
   });
 
@@ -205,7 +233,6 @@ function InvestorListPage() {
     currentPage * PAGE_SIZE,
   );
 
-  // Tangkap file dari komponen Dialog Form
   const handleSubmit = (input: InvestorFormValues, file?: File | null) => {
     if (editing) {
       updateMutation.mutate({ id: editing.id, payload: input, file });
@@ -228,7 +255,6 @@ function InvestorListPage() {
           </p>
         </div>
 
-        {/* Render kondisional berdasarkan izin */}
         {canCreate && (
           <Button
             variant="primary"
@@ -238,7 +264,7 @@ function InvestorListPage() {
             }}
             disabled={isPending}
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="mr-2 h-4 w-4" />
             Tambah Investor
           </Button>
         )}
@@ -272,8 +298,8 @@ function InvestorListPage() {
             <SelectContent>
               <SelectItem value="all">Semua Status</SelectItem>
               <SelectItem value="active">Aktif</SelectItem>
-              <SelectItem value="pending">Menunggu</SelectItem>
               <SelectItem value="inactive">Non-aktif</SelectItem>
+              <SelectItem value="blacklist">Blacklist</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -308,9 +334,6 @@ function InvestorListPage() {
                       <div className="font-medium text-foreground">
                         {inv.name}
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        {inv.id}
-                      </div>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {inv.email}
@@ -337,7 +360,9 @@ function InvestorListPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>Lihat detail</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => setViewing(inv)}>
+                              Lihat detail
+                            </DropdownMenuItem>
 
                             {canUpdate && (
                               <DropdownMenuItem
@@ -351,7 +376,10 @@ function InvestorListPage() {
                             )}
 
                             {canDelete && (
-                              <DropdownMenuItem className="text-danger focus:text-danger">
+                              <DropdownMenuItem 
+                                className="text-danger focus:text-danger"
+                                onSelect={() => setDeleteTarget(inv)}
+                              >
                                 Hapus
                               </DropdownMenuItem>
                             )}
@@ -414,7 +442,142 @@ function InvestorListPage() {
         users={users}
         mode={editing ? "edit" : "create"}
         initialValue={editing}
+        isSubmitting={isPending} 
       />
+
+      {/* MODAL KONFIRMASI HAPUS */}
+      <Dialog open={deleteTarget !== null} onOpenChange={(isOpen) => !isOpen && setDeleteTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="mb-2 grid h-10 w-10 place-items-center rounded-full bg-danger/10">
+              <AlertTriangle className="h-5 w-5 text-danger" />
+            </div>
+            <DialogTitle>Hapus Investor</DialogTitle>
+            <DialogDescription>
+              Yakin ingin menghapus profil investor <span className="font-semibold text-foreground">{deleteTarget?.name}</span>? 
+              Tindakan ini permanen dan akan menghapus semua dokumen yang terkait.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setDeleteTarget(null)}
+              disabled={deleteMutation.isPending}
+            >
+              Batal
+            </Button>
+            <Button 
+              variant="danger" 
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Menghapus...
+                </>
+              ) : (
+                "Ya, Hapus"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL DETAIL INVESTOR */}
+      <Dialog open={viewing !== null} onOpenChange={(isOpen) => !isOpen && setViewing(null)}>
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detail Profil Investor</DialogTitle>
+            <DialogDescription>
+              Informasi lengkap terkait profil dan data rekening investor.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {viewing && (
+            <div className="space-y-6 py-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Nama Lengkap</p>
+                  <p className="font-medium text-foreground">{viewing.name}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Email</p>
+                  <p className="font-medium text-foreground">{viewing.email}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">No. Telepon</p>
+                  <p className="font-medium text-foreground">{viewing.phone || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">NIK</p>
+                  <p className="font-medium text-foreground">{viewing.nik}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Jenis Kelamin</p>
+                  <p className="font-medium text-foreground">{viewing.gender === "men" ? "Laki-laki" : "Perempuan"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Tipe Investor</p>
+                  <p className="font-medium text-foreground">{viewing.investorType === "individual" ? "Individu" : "Korporasi"}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-muted-foreground">Alamat</p>
+                  <p className="font-medium text-foreground">{viewing.address}</p>
+                </div>
+              </div>
+
+              <div className="border-t border-border pt-4">
+                <h4 className="mb-3 font-semibold text-foreground">Informasi Keuangan</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Nama Bank</p>
+                    <p className="font-medium text-foreground">{viewing.bankName}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">No. Rekening</p>
+                    <p className="font-medium text-foreground">{viewing.accountNumber}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-muted-foreground">Total Investasi Saat Ini</p>
+                    <p className="font-semibold text-success text-lg">{formatIDR(viewing.totalInvestasi)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tampilkan seksi ini hanya jika Ahli Waris diisi */}
+              {viewing.heir && viewing.heir.name && (
+                <div className="border-t border-border pt-4">
+                  <h4 className="mb-3 font-semibold text-foreground">Data Ahli Waris</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Nama</p>
+                      <p className="font-medium text-foreground">{viewing.heir.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Hubungan</p>
+                      <p className="font-medium text-foreground">{viewing.heir.relation}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">No. Telepon</p>
+                      <p className="font-medium text-foreground">{viewing.heir.phone || "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">NIK</p>
+                      <p className="font-medium text-foreground">{viewing.heir.nik || "-"}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="sm:justify-end">
+            <Button variant="outline" onClick={() => setViewing(null)}>Tutup</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }

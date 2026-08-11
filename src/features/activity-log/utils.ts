@@ -1,34 +1,40 @@
 import type { ActivityAction } from "./types";
 
-export const actionLabel: Record<ActivityAction, string> = {
-  LOGIN: "Login",
-  CREATE_USER: "Tambah Pengguna",
-  UPDATE_USER: "Ubah Pengguna",
-  DELETE_USER: "Hapus Pengguna",
-  TOGGLE_USER_STATUS: "Toggle Status",
-  CREATE_INVESTOR: "Tambah Investor",
-  UPDATE_INVESTOR: "Ubah Investor",
-  UPDATE_INVESTOR_STATUS: "Ubah Status Investor",
+export const actionLabel: Record<string, string> = {
+  LOGIN_SUCCESS: "Login Berhasil",
+  LOGIN_FAILED: "Login Gagal",
+  LOGOUT: "Logout",
+  USER_CREATE: "Tambah Pengguna",
+  USER_UPDATE: "Ubah Pengguna",
+  USER_DELETE: "Hapus Pengguna",
+  INVESTOR_CREATE: "Tambah Investor",
+  INVESTOR_UPDATE: "Ubah Investor",
+  INVESTOR_STATUS_UPDATE: "Ubah Status Investor",
 };
 
 export function getActionLabel(action: string): string {
-  return actionLabel[action as ActivityAction] ?? action;
+  return actionLabel[action] ?? action;
 }
 
 export function actionBadgeClass(action: string): string {
-  if (action.startsWith("DELETE")) {
+  // Gunakan .includes agar lebih fleksibel
+  if (action.includes("DELETE") || action.includes("FAILED")) {
     return "border-transparent bg-danger/10 text-danger";
   }
-  if (action.startsWith("CREATE")) {
+  if (action.includes("CREATE") || action.includes("SUCCESS")) {
     return "border-transparent bg-success/15 text-success";
   }
-  if (action.startsWith("UPDATE") || action.startsWith("TOGGLE")) {
+  if (action.includes("UPDATE") || action.includes("TOGGLE")) {
     return "border-transparent bg-brand/10 text-brand";
   }
   return "border-transparent bg-muted text-muted-foreground";
 }
 
-export function roleBadgeClass(role: string): string {
+export function roleBadgeClass(role?: string | null): string {
+  if (!role) {
+    return "border-transparent bg-muted/50 text-muted-foreground";
+  }
+
   switch (role.toLowerCase()) {
     case "superadmin":
       return "border-transparent bg-purple-500/15 text-purple-600 dark:text-purple-400";
@@ -58,8 +64,9 @@ const MONTHS = [
   "Des",
 ];
 
-/** "DD MMM YYYY, HH:mm" — deterministik agar aman untuk SSR. */
 export function formatDateTime(iso: string): string {
+  if (!iso) return "-";
+  
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(d.getUTCDate())} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}, ${pad(
@@ -67,7 +74,11 @@ export function formatDateTime(iso: string): string {
   )}:${pad(d.getUTCMinutes())}`;
 }
 
-export function roleDisplay(role: string): string {
+export function roleDisplay(role?: string | null): string {
+  if (!role) {
+    return "Sistem";
+  }
+
   switch (role.toLowerCase()) {
     case "superadmin":
       return "Super Admin";
