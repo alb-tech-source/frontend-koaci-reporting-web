@@ -374,7 +374,7 @@ export function InvestorFormDialog({
                 inputMode="numeric"
                 placeholder="Contoh: 1234567890"
                 value={values.accountNumber}
-                onChange={(e) => set("accountNumber", e.target.value)}
+                onChange={(e) => set("accountNumber", e.target.value.replace(/\D/g, ""))}
                 required
               />
             </div>
@@ -527,7 +527,7 @@ export function InvestorFormDialog({
                       id="heir-rek"
                       inputMode="numeric"
                       value={values.heir.accountNumber}
-                      onChange={(e) => setHeir("accountNumber", e.target.value)}
+                      onChange={(e) => setHeir("accountNumber", e.target.value.replace(/\D/g, ""))}
                     />
                   </div>
                   <div className="space-y-2">

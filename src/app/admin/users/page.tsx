@@ -75,6 +75,8 @@ import {
   statusLabel,
 } from "@/features/user-management/utils";
 import { hasPermission, getCurrentRole } from "@/shared/lib/auth";
+import { toast } from "sonner";
+import { getErrorMessage } from "@/shared/lib/axios";
 
 const usersQuery = queryOptions<AppUser[]>({
   queryKey: ["admin", "users"],
@@ -203,6 +205,7 @@ function UsersPageContent() {
 
         queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
         setFormOpen(false);
+        toast.success("Data pengguna berhasil diperbarui."); 
       } else {
         const response = await createUser(
           {
@@ -227,9 +230,10 @@ function UsersPageContent() {
           email: values.email,
           password: tempPassword,
         });
+        toast.success("Pengguna baru berhasil ditambahkan."); 
       }
     } catch (error) {
-      console.error("Gagal menyimpan pengguna:", error);
+      toast.error(getErrorMessage(error, "Gagal menyimpan pengguna.")); 
     }
   };
 
@@ -238,9 +242,10 @@ function UsersPageContent() {
       toggleUserActivation(id, isActive),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      toast.success("Status pengguna berhasil diubah.");
     },
     onError: (error) => {
-      console.error("Gagal mengubah status:", error);
+      toast.error(getErrorMessage(error, "Gagal mengubah status pengguna."));
     },
   });
 
@@ -249,9 +254,10 @@ function UsersPageContent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
       setDeleteTarget(null);
+      toast.success("Pengguna berhasil dihapus.");
     },
     onError: (error) => {
-      console.error("Gagal menghapus pengguna:", error);
+      toast.error(getErrorMessage(error, "Gagal menghapus pengguna."));
     },
   });
 

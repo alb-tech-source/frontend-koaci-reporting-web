@@ -41,4 +41,11 @@ api.interceptors.response.use(
   }
 );
 
+export function getErrorMessage(err: unknown, fallback = "Terjadi kesalahan. Coba lagi."): string {
+  if (axios.isAxiosError(err)) {
+    return err.response?.data?.message ?? fallback;
+  }
+  return fallback;
+}
+
 export default api;

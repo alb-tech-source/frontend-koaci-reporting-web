@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/shared/components/ui/card";
 import { KoaciLogo } from "@/shared/components/KoaciLogo";
 import { LoginForm, type LoginFormValues } from "@/features/auth/LoginForm";
-import api from "@/shared/lib/axios";
-import axios from "axios";
+import api, { getErrorMessage } from "@/shared/lib/axios"; 
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -26,13 +25,8 @@ export default function AdminLoginPage() {
       localStorage.setItem("refresh_token", refreshToken);
 
       router.push("/admin/dashboard");
-    } catch (err: any) {
-      if (axios.isAxiosError(err)) {
-        const backendMessage = err.response?.data?.message; // sesuaikan nama field setelah cek Swagger
-        setError(backendMessage || "Email atau password salah.");
-      } else {
-        setError("Terjadi kesalahan. Coba lagi.");
-      }
+    } catch (err) {
+      setError(getErrorMessage(err, "Email atau password salah."));
     } finally {
       setLoading(false);
     }
@@ -40,7 +34,6 @@ export default function AdminLoginPage() {
 
   return (
     <main className="flex min-h-screen w-full items-center justify-center bg-gray-50 px-4 py-12">
-      {/* Card langsung diletakkan di dalam main */}
       <Card className="w-full max-w-[400px] shadow-elevated">
         <CardHeader className="space-y-4 pb-2 text-center">
           <KoaciLogo size="md" showText className="justify-center" />
