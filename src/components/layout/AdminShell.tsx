@@ -11,6 +11,7 @@ import {
   Users,
   Activity,
   type LucideIcon,
+  Building2,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
@@ -56,6 +57,7 @@ export const defaultAdminNav: AdminNavItem[] = [
   { to: "/admin/dashboard",      label: "Dashboard",    icon: LayoutDashboard },
   { to: "/admin/investor",       label: "Investor",     icon: Users },
   { to: "/admin/users",          label: "Users",        icon: Users },
+  { to: "/admin/company",        label: "Company",      icon: Building2 },
   { to: "/admin/activity-log",   label: "Log Aktivitas", icon: Activity },
 ];
 
@@ -74,6 +76,7 @@ export function AdminShell({
 }: Readonly<AdminShellProps>) {
   const canViewUsers = hasPermission("users:read");
   const currentUser = getCurrentUser();
+  const currentRole = currentUser?.role ?? ""; // Ekstrak role pengguna saat ini
 
   const { data: profile } = useQuery({
     queryKey: ["current-user-profile"],
@@ -84,9 +87,21 @@ export function AdminShell({
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const filteredNavItems = navItems.filter(
-    (item) => item.to !== "/admin/users" || canViewUsers
-  );
+  // === LOGIKA FILTER MENU ===
+  const filteredNavItems = navItems.filter((item) => {
+    // 1. Log Aktivitas HANYA muncul untuk role "bod"
+    if (item.to === "/admin/activity-log") {
+      return currentRole === "bod";
+    }
+
+    // 2. Users muncul jika punya permission eksplisit ATAU merupakan role eksekutif/admin
+    if (item.to === "/admin/users") {
+      return canViewUsers || ["superadmin", "admin", "bod"].includes(currentRole);
+    }
+
+    // 3. Biarkan menu lainnya tampil seperti biasa
+    return true;
+  });
 
   const displayName = profile?.firstname ?? "Pengguna";
   const displayEmail = profile?.email ?? currentUser?.email ?? user?.email ?? "admin@koaci.id";
@@ -99,7 +114,6 @@ export function AdminShell({
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-muted/40">
-        {/* Kirimkan nav items yang sudah di-filter */}
         <AdminSidebar navItems={filteredNavItems} title={title} />
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/95 px-3 backdrop-blur sm:px-6">
@@ -121,7 +135,6 @@ export function AdminShell({
               </Button>
               <div className="hidden items-center gap-2 sm:flex">
                 <div className="text-right leading-tight">
-                  {/* === IMPLEMENTASI RENDER NAMA & EMAIL === */}
                   <p className="text-sm font-medium text-foreground">
                     {displayName}
                   </p>
@@ -135,7 +148,6 @@ export function AdminShell({
                   </AvatarFallback>
                 </Avatar>
 
-                {/* Implementasi AlertDialog untuk Logout */}
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="ghost" size="sm">

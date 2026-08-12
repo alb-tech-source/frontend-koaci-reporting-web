@@ -32,13 +32,9 @@ export async function fetchLinkableUsers(): Promise<LinkableUser[]> {
       existingInvestors.map((inv: any) => inv.user_id),
     );
 
-    // Filter yang Diperketat: Belum punya profil dan role-nya tepat
     const linkableUsers: LinkableUser[] = allUsers
       .filter((u: any) => {
-        // Belum terhubung di tabel investor
         const isNotLinked = !linkedUserIds.has(u.user_id || u.id);
-
-        // Menangkap nilai role dari berbagai kemungkinan format Backend
         const roleName = (
           u.role?.role_name ||
           u.role_name ||
@@ -46,9 +42,7 @@ export async function fetchLinkableUsers(): Promise<LinkableUser[]> {
           ""
         ).toLowerCase();
 
-        // Hanya izinkan role "user" dan "investor" (Kecualikan Admin/BOD)
         const isEligibleRole = roleName === "user" || roleName === "investor";
-
         return isNotLinked && isEligibleRole;
       })
       .map((u: any) => ({
@@ -78,20 +72,15 @@ export async function fetchInvestors(
     const investorList = data?.data?.items ?? data?.data ?? data ?? [];
 
     return investorList.map((inv: any): Investor => {
-      // 1. Ekstrak nama dari objek bersarang 'user'
       const firstName = inv.user?.firstname || "";
       const lastName = inv.user?.lastname || "";
       const combinedName = `${firstName} ${lastName}`.trim();
 
       return {
-        // 2. Tangkap semua kemungkinan variasi ID dari peladen
         id: inv.investor_id || inv.id || inv.investorId,
         userId: inv.user_id || inv.userId || inv.user?.user_id || inv.user?.id,
-
-        // 3. Prioritaskan nama dan email dari objek 'user'
         name: combinedName || inv.full_name || inv.fullName || "Tanpa Nama",
         email: inv.user?.email || inv.email || "-", 
-        
         phone: inv.phone || "-",
         investorType: inv.investor_type || inv.investorType || "individual",
         gender: inv.gender || "men",
@@ -102,8 +91,6 @@ export async function fetchInvestors(
         totalInvestasi: inv.total_investasi || inv.totalInvestasi || 0, 
         status: inv.status || "inactive",
         joinedAt: inv.createdAt ? inv.createdAt.slice(0, 10) : new Date().toISOString().slice(0, 10),
-        
-        // Tangkap juga variasi snake_case/camelCase untuk Ahli Waris
         heir: {
           name: inv.heir_name || inv.heirName || "",
           relation: inv.heir_relationship || inv.heirRelationship || "",
@@ -117,15 +104,12 @@ export async function fetchInvestors(
       };
     });
   } catch (error) {
-    // Cegat error 500 di sini agar UI tidak meledak
     console.error("Gagal mengambil data dari GET /investors:", error);
-    
-    // Kembalikan array kosong agar tabel render dengan status "Belum ada data"
-    return []; 
+
+    throw error; 
   }
 }
 
-// Fungsi POST Create Investor
 export async function createInvestor(payload: InvestorFormValues) {
   const apiPayload = {
     user_id: payload.userId,
@@ -162,7 +146,6 @@ export async function updateInvestor(
     phone: payload.phone,
     account_number: payload.accountNumber,
     bank_name: payload.bankName,
-    // status: payload.status,
   };
 
   const { data } = await api.put(`/investors/${investorId}`, apiPayload);
@@ -176,6 +159,11 @@ export async function updateInvestorStatus(investorId: string, status: string) {
   return data;
 }
 
+export async function deleteInvestor(investorId: string) {
+  const { data } = await api.delete(`/investors/${investorId}`);
+  return data;
+}
+
 export async function uploadInvestorDocument(
   investorId: string,
   documentName: string,
@@ -184,16 +172,29 @@ export async function uploadInvestorDocument(
   const formData = new FormData();
   formData.append("investor_id", investorId);
   formData.append("document_name", documentName);
-  formData.append("storage_provider", "local");
+  formData.append("storage_provider", "cloudflare"); 
   formData.append("file", file);
 
-  const { data } = await api.post("/investors/documents", formData, {
+  const { data } = await api.post("/investor-documents", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
   return data;
 }
 
-export async function deleteInvestor(investorId: string) {
-  const { data } = await api.delete(`/investors/${investorId}`);
-  return data;
+export async function fetchInvestorDocuments(investorId: string) {
+  const { data } = await api.get(`/investor-documents/investor/${investorId}`);
+
+  return data?.data ?? [];
+}
+
+export async function downloadInvestorDocument(documentId: string) {
+  const { data } = await api.get(`/investor-documents/${documentId}/download`);
+
+  return data; 
+}
+
+export async function deleteInvestorDocument(documentId: string) {
+  const { data } = await api.delete(`/investor-documents/${documentId}`);
+
+  return data; 
 }

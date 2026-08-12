@@ -20,6 +20,8 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { Suspense, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { getErrorMessage } from "@/shared/lib/axios";
 
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
@@ -75,8 +77,6 @@ import {
   statusLabel,
 } from "@/features/user-management/utils";
 import { hasPermission, getCurrentRole } from "@/shared/lib/auth";
-import { toast } from "sonner";
-import { getErrorMessage } from "@/shared/lib/axios";
 
 const usersQuery = queryOptions<AppUser[]>({
   queryKey: ["admin", "users"],
@@ -159,6 +159,93 @@ function UsersPageContent() {
     password: string;
   } | null>(null);
 
+  // === MUTASI DENGAN LOADING STATE ===
+
+  const createMutation = useMutation({
+    mutationFn: async (values: UserFormValues) => {
+      return await createUser(
+        {
+          firstname: values.firstName,
+          lastname: values.lastName,
+          email: values.email,
+          role_name: values.role,
+          permission_ids: values.permissions,
+          is_active: values.activate,
+        },
+        permissionsList 
+      );
+    },
+    onSuccess: (response, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      setFormOpen(false);
+      setPage(1);
+
+      const tempPassword = response?.data?.temporaryPassword || "Gagal mendapatkan password";
+
+      setCreatedUser({
+        fullName: `${variables.firstName} ${variables.lastName}`.trim(),
+        email: variables.email,
+        password: tempPassword,
+      });
+      toast.success("Pengguna baru berhasil ditambahkan."); 
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error, "Gagal menambahkan pengguna.")); 
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, values }: { id: string; values: UserFormValues }) => {
+      return await updateUser(
+        id,
+        {
+          firstname: values.firstName,
+          lastname: values.lastName,
+          email: values.email,
+          role_name: values.role,
+          permission_ids: values.permissions,
+          is_active: values.activate,
+        },
+        permissionsList
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      setFormOpen(false);
+      setEditing(null);
+      toast.success("Data pengguna berhasil diperbarui."); 
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error, "Gagal memperbarui pengguna.")); 
+    }
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
+      toggleUserActivation(id, isActive),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      toast.success("Status pengguna berhasil diubah.");
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error, "Gagal mengubah status pengguna."));
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteUser(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      setDeleteTarget(null);
+      toast.success("Pengguna berhasil dihapus.");
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error, "Gagal menghapus pengguna."));
+    },
+  });
+
+  // === HANDLERS ===
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return users.filter((u) => {
@@ -187,79 +274,13 @@ function UsersPageContent() {
     setFormOpen(true);
   };
 
-  const handleSubmit = async (values: UserFormValues) => {
-    try {
-      if (formMode === "edit" && editing) {
-        await updateUser(
-          editing.id,
-          {
-            firstname: values.firstName,
-            lastname: values.lastName,
-            email: values.email,
-            role_name: values.role,
-            permission_ids: values.permissions,
-            is_active: values.activate,
-          },
-          permissionsList
-        );
-
-        queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
-        setFormOpen(false);
-        toast.success("Data pengguna berhasil diperbarui."); 
-      } else {
-        const response = await createUser(
-          {
-            firstname: values.firstName,
-            lastname: values.lastName,
-            email: values.email,
-            role_name: values.role,
-            permission_ids: values.permissions,
-            is_active: values.activate,
-          },
-          permissionsList 
-        );
-
-        queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
-        setFormOpen(false);
-        setPage(1);
-
-        const tempPassword = response?.data?.temporaryPassword || "Gagal mendapatkan password";
-
-        setCreatedUser({
-          fullName: `${values.firstName} ${values.lastName}`.trim(),
-          email: values.email,
-          password: tempPassword,
-        });
-        toast.success("Pengguna baru berhasil ditambahkan."); 
-      }
-    } catch (error) {
-      toast.error(getErrorMessage(error, "Gagal menyimpan pengguna.")); 
+  const handleSubmit = (values: UserFormValues) => {
+    if (formMode === "edit" && editing) {
+      updateMutation.mutate({ id: editing.id, values });
+    } else {
+      createMutation.mutate(values);
     }
   };
-
-  const toggleMutation = useMutation({
-    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
-      toggleUserActivation(id, isActive),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
-      toast.success("Status pengguna berhasil diubah.");
-    },
-    onError: (error) => {
-      toast.error(getErrorMessage(error, "Gagal mengubah status pengguna."));
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteUser(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
-      setDeleteTarget(null);
-      toast.success("Pengguna berhasil dihapus.");
-    },
-    onError: (error) => {
-      toast.error(getErrorMessage(error, "Gagal menghapus pengguna."));
-    },
-  });
 
   const confirmDelete = () => {
     if (!deleteTarget) return;
@@ -267,6 +288,8 @@ function UsersPageContent() {
   };
 
   const isEmpty = pageItems.length === 0;
+  
+  const isFormSubmitting = createMutation.isPending || updateMutation.isPending;
 
   return (
     <div className="space-y-6">
@@ -460,7 +483,7 @@ function UsersPageContent() {
             <p className="text-xs text-muted-foreground">
               Menampilkan{" "}
               <span className="font-medium text-foreground">
-                {start + 1}-{start + pageItems.length}
+                {start + 1}-{Math.min(start + PAGE_SIZE, filtered.length)}
               </span>{" "}
               dari{" "}
               <span className="font-medium text-foreground">
@@ -500,6 +523,7 @@ function UsersPageContent() {
         initialUser={editing}
         onSubmit={handleSubmit}
         currentUserRole={currentRole ?? "admin"}
+        isSubmitting={isFormSubmitting}
       />
 
       <NewUserSuccessDialog
@@ -512,7 +536,7 @@ function UsersPageContent() {
 
       <Dialog
         open={deleteTarget !== null}
-        onOpenChange={(o) => !o && setDeleteTarget(null)}
+        onOpenChange={(o) => !o && !deleteMutation.isPending && setDeleteTarget(null)}
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -523,11 +547,11 @@ function UsersPageContent() {
             <DialogDescription>
               {deleteTarget ? (
                 <>
-                  Yakin menghapus{" "}
+                  Yakin menghapus profil pengguna{" "}
                   <span className="font-medium text-foreground">
                     {deleteTarget.firstName} {deleteTarget.lastName}
                   </span>
-                  ? Tindakan ini permanen, tidak bisa dibatalkan.
+                  ? Tindakan ini permanen dan tidak bisa dibatalkan.
                 </>
               ) : (
                 "Tindakan ini permanen, tidak bisa dibatalkan."

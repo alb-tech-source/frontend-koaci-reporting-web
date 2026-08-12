@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner"; // ✅ Tambahkan ini untuk notif validasi form
 
 import { Button } from "@/shared/components/ui/button";
 import { Checkbox } from "@/shared/components/ui/checkbox";
@@ -27,6 +29,7 @@ interface UserFormDialogProps {
   initialUser?: AppUser | null;
   onSubmit: (values: UserFormValues) => void;
   currentUserRole?: string;
+  isSubmitting?: boolean;
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -37,9 +40,7 @@ const ROLE_LABELS: Record<string, string> = {
   user: "User",
 };
 
-// Role yang tidak perlu panel permission
 const ROLES_WITHOUT_PERMISSIONS = new Set(["investor", "user"]);
-// Role yang permission-nya dikunci penuh (semua dicentang, tidak bisa diubah)
 const ROLES_FULL_LOCKED = new Set(["superadmin"]);
 
 export function UserFormDialog({
@@ -49,6 +50,7 @@ export function UserFormDialog({
   initialUser,
   onSubmit,
   currentUserRole = "admin",
+  isSubmitting = false,
 }: Readonly<UserFormDialogProps>) {
   const emptyValues: UserFormValues = {
     firstName: "",
@@ -71,9 +73,9 @@ export function UserFormDialog({
     if (!open) return;
     if (mode === "edit" && initialUser) {
       setValues({
-        firstName: initialUser.firstName,
-        lastName: initialUser.lastName,
-        email: initialUser.email,
+        firstName: initialUser.firstName || "",
+        lastName: initialUser.lastName || "",
+        email: initialUser.email || "",
         role: initialUser.role,
         permissions: initialUser.permissions,
         activate: initialUser.status === "active",
@@ -95,12 +97,16 @@ export function UserFormDialog({
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!values.firstName || !values.email) return;
+    
+    // ✅ FIX 1: Tampilkan notifikasi jika ada input yang kosong, jangan diam saja
+    if (!values.firstName || !values.email) {
+      toast.warning("Mohon lengkapi Nama Depan dan Email.");
+      return;
+    }
+
     onSubmit(values);
-    onOpenChange(false);
   };
 
-  // Role options tergantung siapa yang login
   const availableRoles: UserRole[] = currentUserRole === "superadmin"
     ? ["superadmin", "admin", "bod", "investor", "user"]
     : ["admin", "bod", "investor", "user"];
@@ -116,21 +122,24 @@ export function UserFormDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
-        <div className="px-6 pt-6 pb-4 border-b border-border">
-          <DialogHeader>
-            <DialogTitle>
-              {mode === "edit" ? "Edit Pengguna" : "Tambah Pengguna"}
-            </DialogTitle>
-            <DialogDescription>
-              {mode === "edit"
-                ? "Perbarui data akun pengguna sistem."
-                : "Buat akun pengguna baru dengan role dan izin akses."}
-            </DialogDescription>
-          </DialogHeader>
-        </div>
+        
+        {/* ✅ FIX 2: Bungkus seluruh modal dengan form, dari Header sampai Footer agar tombol Submit aman */}
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          
+          <div className="px-6 pt-6 pb-4 border-b border-border shrink-0">
+            <DialogHeader>
+              <DialogTitle>
+                {mode === "edit" ? "Edit Pengguna" : "Tambah Pengguna"}
+              </DialogTitle>
+              <DialogDescription>
+                {mode === "edit"
+                  ? "Perbarui data akun pengguna sistem."
+                  : "Buat akun pengguna baru dengan role dan izin akses."}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          <form id="user-form" onSubmit={handleSubmit} className="space-y-4">
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="usr-first">Nama Depan</Label>
@@ -181,7 +190,6 @@ export function UserFormDialog({
               </Select>
             </div>
 
-            {/* Blok Izin Akses */}
             {!showPermissions ? (
               <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
                 {values.role === "user"
@@ -239,19 +247,37 @@ export function UserFormDialog({
                 onCheckedChange={(c) => setValues((v) => ({ ...v, activate: c }))}
               />
             </div>
-          </form>
-        </div>
+          </div>
 
-        <div className="p-6 pt-4 border-t border-border bg-background">
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Batal
-            </Button>
-            <Button type="submit" form="user-form" variant="primary">
-              Simpan
-            </Button>
-          </DialogFooter>
-        </div>
+          <div className="p-6 pt-4 border-t border-border bg-background shrink-0">
+            <DialogFooter>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => onOpenChange(false)}
+                disabled={isSubmitting} 
+              >
+                Batal
+              </Button>
+              <Button 
+                type="submit" 
+                variant="primary"
+                disabled={isSubmitting} 
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Menyimpan...
+                  </>
+                ) : mode === "edit" ? (
+                  "Simpan Perubahan"
+                ) : (
+                  "Simpan Pengguna"
+                )}
+              </Button>
+            </DialogFooter>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );

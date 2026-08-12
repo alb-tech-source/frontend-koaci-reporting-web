@@ -26,8 +26,9 @@ api.interceptors.response.use(
           `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/refresh`,
           { refreshToken }
         );
-        localStorage.setItem("access_token", data.accessToken);
-        originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+        localStorage.setItem("access_token", data.data.accessToken);
+        localStorage.setItem("refresh_token", data.data.refreshToken);
+        originalRequest.headers.Authorization = `Bearer ${data.data.accessToken}`;
         return api(originalRequest);
       } catch (refreshError) {
         if (typeof window !== "undefined") {
