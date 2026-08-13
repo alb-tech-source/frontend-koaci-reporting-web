@@ -1,4 +1,3 @@
-// web/src/components/layout/AdminShell.tsx
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
@@ -12,6 +11,7 @@ import {
   Activity,
   type LucideIcon,
   Building2,
+  UserCog,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
@@ -56,11 +56,11 @@ export interface AdminNavItem {
 export const defaultAdminNav: AdminNavItem[] = [
   { to: "/admin/dashboard",      label: "Dashboard",    icon: LayoutDashboard },
   { to: "/admin/investor",       label: "Investor",     icon: Users },
-  { to: "/admin/users",          label: "Users",        icon: Users },
+  { to: "/admin/users",          label: "Users",        icon: UserCog },
   { to: "/admin/company",        label: "Company",      icon: Building2 },
   { to: "/admin/activity-log",   label: "Log Aktivitas", icon: Activity },
 ];
-
+  
 interface AdminShellProps {
   children: ReactNode;
   navItems?: AdminNavItem[];
@@ -76,7 +76,7 @@ export function AdminShell({
 }: Readonly<AdminShellProps>) {
   const canViewUsers = hasPermission("users:read");
   const currentUser = getCurrentUser();
-  const currentRole = currentUser?.role ?? ""; // Ekstrak role pengguna saat ini
+  const currentRole = currentUser?.role ?? ""; 
 
   const { data: profile } = useQuery({
     queryKey: ["current-user-profile"],
@@ -89,17 +89,14 @@ export function AdminShell({
 
   // === LOGIKA FILTER MENU ===
   const filteredNavItems = navItems.filter((item) => {
-    // 1. Log Aktivitas HANYA muncul untuk role "bod"
     if (item.to === "/admin/activity-log") {
       return currentRole === "bod";
     }
 
-    // 2. Users muncul jika punya permission eksplisit ATAU merupakan role eksekutif/admin
     if (item.to === "/admin/users") {
       return canViewUsers || ["superadmin", "admin", "bod"].includes(currentRole);
     }
 
-    // 3. Biarkan menu lainnya tampil seperti biasa
     return true;
   });
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronsUpDown, Upload, Loader2 } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 
 import { Button } from "@/shared/components/ui/button";
 import {
@@ -245,8 +245,7 @@ export function InvestorFormDialog({
               </PopoverContent>
             </Popover>
             <p className="text-xs text-muted-foreground">
-              Hanya menampilkan user ber-role Investor yang belum terhubung ke
-              profil investor.
+              Hanya menampilkan user yang belum terhubung ke profil investor.
             </p>
           </div>
 
@@ -419,42 +418,6 @@ export function InvestorFormDialog({
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          {/* Upload dokumen */}
-          <div className="space-y-2">
-            <Label htmlFor="inv-doc">Upload Dokumen</Label>
-            <div className="flex items-center gap-3">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                Pilih file
-              </Button>
-              <span className="truncate text-sm text-muted-foreground">
-                {values.documentName || "Belum ada file dipilih"}
-              </span>
-              <input
-                ref={fileInputRef}
-                id="inv-doc"
-                type="file"
-                accept=".pdf,.jpg,.jpeg,.png"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    setSelectedFile(file);
-                    set("documentName", file.name);
-                  }
-                }}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Format PDF, JPG, atau PNG. Maks. 5 MB.
-            </p>
           </div>
 
           {/* Ahli waris */}

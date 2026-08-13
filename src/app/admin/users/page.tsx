@@ -95,8 +95,7 @@ export default function AdminPenggunaPage() {
     return <PageSkeleton />;
   }
 
-  const isExecutive = ["superadmin", "bod"].includes(role ?? "");
-  const hasAccess = hasPermission("users:read") || isExecutive;
+  const hasAccess = hasPermission("users:read");
 
   if (!hasAccess) {
     return (
@@ -143,6 +142,13 @@ function UsersPageContent() {
     return canDelete && target.role !== "bod";
   };
 
+  const canActOnTarget = (target: AppUser): boolean => {
+    if (target.role === "bod" || target.role === "superadmin") {
+      return currentRole === "bod";
+    }
+    return true;
+  };
+
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
   const [statusFilter, setStatusFilter] = useState<UserStatus | "all">("all");
@@ -158,8 +164,6 @@ function UsersPageContent() {
     email: string;
     password: string;
   } | null>(null);
-
-  // === MUTASI DENGAN LOADING STATE ===
 
   const createMutation = useMutation({
     mutationFn: async (values: UserFormValues) => {
@@ -244,8 +248,6 @@ function UsersPageContent() {
     },
   });
 
-  // === HANDLERS ===
-
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return users.filter((u) => {
@@ -288,7 +290,6 @@ function UsersPageContent() {
   };
 
   const isEmpty = pageItems.length === 0;
-  
   const isFormSubmitting = createMutation.isPending || updateMutation.isPending;
 
   return (
@@ -345,6 +346,7 @@ function UsersPageContent() {
                 <SelectItem value="investor">Investor</SelectItem>
                 <SelectItem value="superadmin">Super Admin</SelectItem>
                 <SelectItem value="bod">BOD</SelectItem>
+                <SelectItem value="user">User</SelectItem>
               </SelectContent>
             </Select>
             <Select
@@ -421,7 +423,7 @@ function UsersPageContent() {
                     {hasActions && (
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          {canUpdate && (
+                          {canUpdate && canActOnTarget(u) && (
                             <>
                               <Button
                                 variant="ghost"
@@ -447,7 +449,7 @@ function UsersPageContent() {
                             </>
                           )}
 
-                          {canDelete && canDeleteUser(u) && (
+                          {canDelete && canDeleteUser(u) && canActOnTarget(u) && (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -457,13 +459,14 @@ function UsersPageContent() {
                               <Trash2 className="h-4 w-4 text-danger" />
                             </Button>
                           )}
-                          {canDelete && !canDeleteUser(u) && (
+                          
+                          {!canActOnTarget(u) && (
                             <Button
                               variant="ghost"
                               size="icon"
-                              aria-label="BOD tidak dapat dihapus"
+                              aria-label="Akun dilindungi"
                               disabled
-                              title="Akun BOD tidak dapat dihapus"
+                              title="Hanya BOD yang dapat mengubah akun ini"
                             >
                               <ShieldCheck className="h-4 w-4 text-muted-foreground/40" />
                             </Button>

@@ -135,19 +135,26 @@ export async function createInvestor(payload: InvestorFormValues) {
 }
 
 export async function updateInvestor(
-  investorId: string,
+  investorId: string, 
   payload: Partial<InvestorFormValues>,
 ) {
   const apiPayload = {
     investor_type: payload.investorType,
+    status: payload.status,
     gender: payload.gender,
     nik: payload.nik,
     address: payload.address,
     phone: payload.phone,
     account_number: payload.accountNumber,
     bank_name: payload.bankName,
+    heir_name: payload.heir?.name || undefined,
+    heir_relationship: payload.heir?.relation || undefined,
+    heir_nik: payload.heir?.nik || undefined,
+    heir_address: payload.heir?.address || undefined,
+    heir_account_number: payload.heir?.accountNumber || undefined,
+    heir_bank_name: payload.heir?.bankName || undefined,
+    heir_phone: payload.heir?.phone || undefined,
   };
-
   const { data } = await api.put(`/investors/${investorId}`, apiPayload);
   return data;
 }

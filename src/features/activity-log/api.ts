@@ -1,34 +1,32 @@
 import api from "@/shared/lib/axios";
 import type { ActivityLogParams, ActivityLogResponse } from "./types";
 
-export async function fetchActivityLogs(
-  params: ActivityLogParams
-): Promise<ActivityLogResponse> {
+export async function fetchActivityLogs(params: ActivityLogParams): Promise<ActivityLogResponse> {
   try {
     const cleanParams = Object.fromEntries(
       Object.entries(params).filter(([_, v]) => v != null && v !== "")
     );
     const { data } = await api.get("/activity-logs", { params: cleanParams });
 
-    const rawItems = data?.data?.items ?? data?.data ?? data ?? [];
+    const rawItems = data?.data ?? [];
 
     const mappedItems = rawItems.map((log: any) => ({
-      id: log.id || log.activity_id || Math.random().toString(),
-      createdAt: log.created_at || log.createdAt || "",
-      userName: log.user_name || log.userName || log.user?.firstname || "-",
-      userId: log.user_id || log.userId || "-",
-      userRole: log.user_role || log.role || log.userRole || null,
-      action: log.action || "-",
-      resource: log.resource || log.entity_type || log.entityType || "-",
-      ip: log.ip_address || log.ipAddress || log.ip || "-",
+      id: log.activity_id,
+      createdAt: log.timestamp,
+      userName: `${log.user?.firstname ?? ""} ${log.user?.lastname ?? ""}`.trim() || "-",
+      userId: log.user_id,
+      userRole: log.user?.role?.role_name ?? "-",
+      action: log.action,
+      resource: log.entity_type,
+      ip: log.ip_address,
     }));
 
     return {
       data: {
-        items: mappedItems, // Gunakan data yang sudah dipetakan
-        total: data?.data?.meta?.total ?? data?.data?.total ?? 0,
-        page: data?.data?.meta?.page ?? data?.data?.page ?? 1,
-        totalPages: data?.data?.meta?.totalPages ?? data?.data?.totalPages ?? 1,
+        items: mappedItems,
+        total: data?.meta?.total ?? 0,
+        page: data?.meta?.page ?? 1,
+        totalPages: data?.meta?.totalPages ?? 1,
       },
     };
   } catch (error) {
