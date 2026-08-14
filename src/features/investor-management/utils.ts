@@ -10,17 +10,17 @@ export function formatIDR(value: number): string {
 
 export const statusLabel: Record<InvestorStatus, string> = {
   active: "Aktif",
-  pending: "Menunggu",
   inactive: "Non-aktif",
+  blacklist: "Blacklist",
 };
 
 export const statusBadgeVariant: Record<
   InvestorStatus,
-  "active" | "pending" | "cancelled"
+  "active" | "cancelled"
 > = {
   active: "active",
-  pending: "pending",
   inactive: "cancelled",
+  blacklist: "cancelled",
 };
 export const INDONESIAN_BANKS = [
   "BCA",
