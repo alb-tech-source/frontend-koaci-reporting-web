@@ -5,10 +5,15 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/shared/components/ui/card";
 import { KoaciLogo } from "@/shared/components/KoaciLogo";
 import { LoginForm, type LoginFormValues } from "@/features/auth/LoginForm";
-import api, { getErrorMessage } from "@/shared/lib/axios"; 
+
+import { login, fetchCurrentUser } from "@/features/auth/api"; 
+import { useAuthStore } from "@/shared/store/authStore";
+import { getErrorMessage } from "@/shared/lib/axios"; 
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const setAuth = useAuthStore((state) => state.setAuth);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -16,15 +21,21 @@ export default function AdminLoginPage() {
     setError("");
     setLoading(true);
     try {
-      const { data } = await api.post("/auth/login", { email, password });
+      // 1. Panggil API Login (Hanya agar backend menset HttpOnly Cookie)
+      await login({ email, password });
 
-      const { accessToken, refreshToken } = data.data.tokens;
+      // 2. Panggil API /auth/me (Browser otomatis membawa Cookie dari langkah 1)
+      const profileResponse = await fetchCurrentUser();
 
-      document.cookie = `access_token=${accessToken}; path=/; max-age=86400`;
-      localStorage.setItem("access_token", accessToken);
-      localStorage.setItem("refresh_token", refreshToken);
-
-      router.push("/admin/dashboard");
+      // 3. Simpan identitas UI ke Zustand
+      if (profileResponse?.success && profileResponse.data) {
+        setAuth(profileResponse.data); 
+        
+        // 4. Redirect ke dashboard admin
+        router.push("/admin/dashboard");
+      } else {
+        setError("Gagal memuat profil pengguna dari server.");
+      }
     } catch (err) {
       setError(getErrorMessage(err, "Email atau password salah."));
     } finally {

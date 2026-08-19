@@ -41,6 +41,7 @@ interface DocumentListPanelProps {
   className?: string;
 }
 
+// Helper untuk format ukuran file
 function formatFileSize(bytes: number): string {
   if (!bytes) return "0 B";
   const kb = bytes / 1024;
@@ -48,6 +49,7 @@ function formatFileSize(bytes: number): string {
   return `${(kb / 1024).toFixed(1)} MB`;
 }
 
+// Helper untuk format tanggal relatif
 function formatRelativeID(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   if (Number.isNaN(diff)) return "-";
@@ -85,7 +87,8 @@ export function DocumentListPanel({
 }: Readonly<DocumentListPanelProps>) {
   const queryClient = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<any | null>(null);
+  
+  const [pendingDelete, setPendingDelete] = useState<Record<string, any> | null>(null);
   const [isDownloading, setIsDownloading] = useState<string | null>(null);
 
   const { data: documents = [], isLoading } = useQuery({
@@ -94,6 +97,7 @@ export function DocumentListPanel({
     enabled: !!investorId,
   });
 
+  // Mutasi Upload Dokumen
   const uploadMutation = useMutation({
     mutationFn: async (input: NewDocumentInput & { file: File }) => {
       return await uploadInvestorDocument(investorId, input.name, input.file);
@@ -108,6 +112,7 @@ export function DocumentListPanel({
     },
   });
 
+  // Mutasi Hapus Dokumen
   const deleteMutation = useMutation({
     mutationFn: (docId: string) => deleteInvestorDocument(docId),
     onSuccess: () => {
@@ -120,20 +125,88 @@ export function DocumentListPanel({
     },
   });
 
+  // Handle Download Dokumen
   const handleDownload = async (docId: string) => {
     setIsDownloading(docId);
     try {
       const res = await downloadInvestorDocument(docId);
-      if (res?.downloadUrl) {
-        window.open(res.downloadUrl, "_blank");
+      const url = res?.data?.downloadUrl ?? res?.downloadUrl;
+      
+      if (url) {
+        window.open(url, "_blank", "noopener,noreferrer");
       } else {
-        throw new Error("URL unduhan tidak ditemukan.");
+        throw new Error("URL unduhan tidak ditemukan dari server.");
       }
     } catch (error) {
       toast.error(getErrorMessage(error, "Gagal mengunduh dokumen."));
     } finally {
       setIsDownloading(null);
     }
+  };
+
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="space-y-2">
+          <Skeleton className="h-16 w-full rounded-2xl" />
+          <Skeleton className="h-16 w-full rounded-2xl" />
+        </div>
+      );
+    }
+    
+    if (documents.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border px-6 py-10 text-center">
+          <FolderOpen className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
+          <p className="text-sm text-muted-foreground">Belum ada dokumen diunggah.</p>
+        </div>
+      );
+    }
+
+    return (
+      <ul className="space-y-2">
+        {documents.map((doc: Record<string, any>) => (
+          <li
+            key={doc.document_id}
+            className="flex items-center gap-3 rounded-2xl border border-border bg-background p-3 shadow-card"
+          >
+            <DocumentIcon mimeType={doc.mime_type} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-foreground">
+                {doc.document_name}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {formatFileSize(doc.file_size_bytes)} · {formatRelativeID(doc.uploaded_at)}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={`Unduh ${doc.document_name}`}
+                disabled={isDownloading === doc.document_id}
+                onClick={() => handleDownload(doc.document_id)}
+              >
+                {isDownloading === doc.document_id ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={`Hapus ${doc.document_name}`}
+                className="text-danger hover:text-danger"
+                onClick={() => setPendingDelete(doc)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    );
   };
 
   return (
@@ -151,61 +224,9 @@ export function DocumentListPanel({
         </Button>
       </div>
 
-      {isLoading ? (
-        <div className="space-y-2">
-          <Skeleton className="h-16 w-full rounded-2xl" />
-          <Skeleton className="h-16 w-full rounded-2xl" />
-        </div>
-      ) : documents.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border px-6 py-10 text-center">
-          <FolderOpen className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
-          <p className="text-sm text-muted-foreground">Belum ada dokumen diunggah.</p>
-        </div>
-      ) : (
-        <ul className="space-y-2">
-          {documents.map((doc: any) => (
-            <li
-              key={doc.document_id}
-              className="flex items-center gap-3 rounded-2xl border border-border bg-background p-3 shadow-card"
-            >
-              <DocumentIcon mimeType={doc.mime_type} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-foreground">
-                  {doc.document_name}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {formatFileSize(doc.file_size_bytes)} · {formatRelativeID(doc.uploaded_at)}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={`Unduh ${doc.document_name}`}
-                  disabled={isDownloading === doc.document_id}
-                  onClick={() => handleDownload(doc.document_id)}
-                >
-                  {isDownloading === doc.document_id ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  ) : (
-                    <Download className="h-4 w-4" />
-                  )}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={`Hapus ${doc.document_name}`}
-                  className="text-danger hover:text-danger"
-                  onClick={() => setPendingDelete(doc)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+      {renderContent()}
 
+      {/* MODAL UNGGAH DOKUMEN */}
       <AddDocumentDialog
         open={addOpen}
         onOpenChange={setAddOpen}
@@ -213,6 +234,7 @@ export function DocumentListPanel({
         onUpload={(input, file) => uploadMutation.mutate({ ...input, file })}
       />
 
+      {/* MODAL KONFIRMASI HAPUS */}
       <AlertDialog
         open={pendingDelete !== null}
         onOpenChange={(open) => {
@@ -232,7 +254,7 @@ export function DocumentListPanel({
               className="bg-danger text-white hover:bg-danger/90"
               disabled={deleteMutation.isPending}
               onClick={(e) => {
-                e.preventDefault();
+                e.preventDefault(); 
                 if (pendingDelete) deleteMutation.mutate(pendingDelete.document_id);
               }}
             >

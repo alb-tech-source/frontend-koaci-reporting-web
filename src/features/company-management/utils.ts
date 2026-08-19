@@ -1,18 +1,18 @@
-import type { LegalStatus } from "./types";
+import type { CompanyStatus } from "./types";
 
-export const legalStatusLabel: Record<LegalStatus, string> = {
-  valid: "Valid",
-  expired: "Expired",
-  pending_renewal: "Menunggu Perpanjangan",
+export const companyStatusLabel: Record<CompanyStatus, string> = {
+  active: "Valid / Aktif",
+  inactive: "Tidak Aktif",
+  blacklist: "Blacklist",
 };
 
-export const legalStatusBadgeVariant: Record<
-  LegalStatus,
-  "active" | "pending" | "cancelled"
+export const companyStatusBadgeVariant: Record<
+  CompanyStatus,
+  "success" | "outline" | "danger" // Disesuaikan dengan komponen Badge yang tersedia
 > = {
-  valid: "active",
-  expired: "cancelled",
-  pending_renewal: "pending",
+  active: "success",
+  inactive: "outline",
+  blacklist: "danger",
 };
 
 export function formatDateID(iso: string): string {

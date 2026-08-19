@@ -42,20 +42,35 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui
 
 import { CompanyFormDialog } from "@/features/company-management/CompanyFormDialog";
 import { LegalDocumentsPanel } from "@/features/company-management/LegalDocumentsPanel";
-import { fetchCompanies } from "@/features/company-management/api";
+import { fetchCompanies, createCompany, deleteCompany } from "@/features/company-management/api";
 import type {
   Company,
-  LegalStatus,
   NewCompanyInput,
+  CompanyStatus // ✅ Ganti LegalStatus menjadi CompanyStatus
 } from "@/features/company-management/types";
-import {
-  legalStatusBadgeVariant,
-  legalStatusLabel,
-} from "@/features/company-management/utils";
+
+// Fungsi mapper status sementara karena type utils berubah
+function getStatusLabel(status: CompanyStatus) {
+  switch (status) {
+    case "active": return "Valid / Aktif";
+    case "inactive": return "Tidak Aktif";
+    case "blacklist": return "Blacklist";
+    default: return status;
+  }
+}
+
+function getStatusBadgeVariant(status: CompanyStatus) {
+  switch (status) {
+    case "active": return "success";
+    case "inactive": return "outline";
+    case "blacklist": return "danger";
+    default: return "outline";
+  }
+}
 
 const companiesQuery = queryOptions({
   queryKey: ["admin", "companies"],
-  queryFn: fetchCompanies,
+  queryFn: () => fetchCompanies(1, 100),
 });
 
 export default function AdminPerusahaanRoute() {
@@ -69,16 +84,16 @@ export default function AdminPerusahaanRoute() {
 const PAGE_SIZE = 5;
 
 function CompanyManagementPage() {
-  const { data } = useSuspenseQuery(companiesQuery);
-  const [companies, setCompanies] = useState<Company[]>(data);
+  const { data: raw } = useSuspenseQuery(companiesQuery);
+  const [companies, setCompanies] = useState<Company[]>(raw.items);
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<LegalStatus | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<CompanyStatus | "all">("all");
   const [page, setPage] = useState(1);
   
   // State Dialog & Hapus
   const [open, setOpen] = useState(false);
   const [selectedDocCompanyId, setSelectedDocCompanyId] = useState<string>(
-    data[0]?.id ?? "",
+    raw.items[0]?.id ?? "", // ✅ FIX: Ganti `data` menjadi `raw.items`
   );
   const [deleteTarget, setDeleteTarget] = useState<Company | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -90,10 +105,11 @@ function CompanyManagementPage() {
         !q ||
         c.nama.toLowerCase().includes(q) ||
         c.sektor.toLowerCase().includes(q);
-      const matchStatus = status === "all" || c.statusLegalitas === status;
+      // ✅ FIX: Ganti `statusLegalitas` menjadi `status`
+      const matchStatus = statusFilter === "all" || c.status === statusFilter;
       return matchQ && matchStatus;
     });
-  }, [companies, search, status]);
+  }, [companies, search, statusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -103,35 +119,24 @@ function CompanyManagementPage() {
   );
 
   const handleAdd = async (input: NewCompanyInput) => {
-    const next: Company = {
-      id: `CMP-${String(companies.length + 1).padStart(3, "0")}`,
-      nama: input.nama,
-      jenis: input.jenis,
-      sektor: input.sektor,
-      deskripsi: input.deskripsi,
-      tanggalBerdiri: input.tanggalBerdiri,
-      email: input.email,
-      telepon: input.telepon,
-      alamat: input.alamat,
-      website: input.website,
-      statusLegalitas: "pending_renewal",
-      dokumen: [],
-    };
-    
-    setCompanies((prev) => [next, ...prev]);
-    setPage(1);
-    toast.success("Data perusahaan berhasil ditambahkan!");
-    setOpen(false);
+    try {
+      const created = await createCompany(input);
+      setCompanies((prev) => [created, ...prev]);
+      toast.success("Perusahaan berhasil ditambahkan!");
+      setOpen(false);
+    } catch {
+      toast.error("Gagal menambahkan perusahaan.");
+    }
   };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await deleteCompany(deleteTarget.id);
       setCompanies((prev) => prev.filter((c) => c.id !== deleteTarget.id));
       toast.success(`Perusahaan ${deleteTarget.nama} berhasil dihapus.`);
-    } catch (error) {
+    } catch {
       toast.error("Gagal menghapus perusahaan.");
     } finally {
       setIsDeleting(false);
@@ -182,9 +187,9 @@ function CompanyManagementPage() {
                 />
               </div>
               <Select
-                value={status}
+                value={statusFilter}
                 onValueChange={(v) => {
-                  setStatus(v as LegalStatus | "all");
+                  setStatusFilter(v as CompanyStatus | "all");
                   setPage(1);
                 }}
               >
@@ -193,11 +198,9 @@ function CompanyManagementPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Semua Status</SelectItem>
-                  <SelectItem value="valid">Valid</SelectItem>
-                  <SelectItem value="pending_renewal">
-                    Menunggu Perpanjangan
-                  </SelectItem>
-                  <SelectItem value="expired">Expired</SelectItem>
+                  <SelectItem value="active">Valid / Aktif</SelectItem>
+                  <SelectItem value="inactive">Tidak Aktif</SelectItem>
+                  <SelectItem value="blacklist">Blacklist</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -241,12 +244,9 @@ function CompanyManagementPage() {
                           {cmp.sektor}
                         </TableCell>
                         <TableCell>
-                          <Badge
-                            variant={
-                              legalStatusBadgeVariant[cmp.statusLegalitas]
-                            }
-                          >
-                            {legalStatusLabel[cmp.statusLegalitas]}
+                          {/* ✅ FIX: Ganti dengan mapper fungsi baru */}
+                          <Badge variant={getStatusBadgeVariant(cmp.status) as any}>
+                            {getStatusLabel(cmp.status)}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">

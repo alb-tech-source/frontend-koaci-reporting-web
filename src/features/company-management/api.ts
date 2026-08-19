@@ -1,151 +1,73 @@
-import type { Company } from "./types";
+import api from "@/shared/lib/axios";
+import type { ApiCompany, Company, NewCompanyInput } from "./types";
+import { mapApiCompany } from "./types";
 
-export const dummyCompanies: Company[] = [
-  {
-    id: "CMP-001",
-    nama: "PT Berkah Amanah Syariah",
-    jenis: "PT",
-    sektor: "Keuangan Syariah",
-    deskripsi:
-      "Perusahaan penyedia layanan pembiayaan syariah untuk UMKM di Indonesia.",
-    tanggalBerdiri: "2016-04-12",
-    email: "corporate@berkahamanah.co.id",
-    telepon: "+62 21 5550 1122",
-    alamat: "Menara Amanah Lt. 12, Jl. Sudirman No. 45, Jakarta Selatan",
-    website: "https://berkahamanah.co.id",
-    statusLegalitas: "valid",
-    dokumen: [
-      {
-        id: "DOC-001-1",
-        jenis: "Akta Pendirian",
-        nomor: "AKT/2016/0412",
-        tanggalTerbit: "2016-04-12",
-        tanggalKedaluwarsa: "2036-04-12",
-        status: "valid",
-      },
-      {
-        id: "DOC-001-2",
-        jenis: "NIB",
-        nomor: "9120001234567",
-        tanggalTerbit: "2021-08-01",
-        tanggalKedaluwarsa: "2031-08-01",
-        status: "valid",
-      },
-      {
-        id: "DOC-001-3",
-        jenis: "Izin OJK",
-        nomor: "KEP-45/D.05/2018",
-        tanggalTerbit: "2018-03-20",
-        tanggalKedaluwarsa: "2026-03-20",
-        status: "valid",
-      },
-    ],
-  },
-  {
-    id: "CMP-002",
-    nama: "CV Rezeki Bersama",
-    jenis: "CV",
-    sektor: "Perdagangan Umum",
-    deskripsi: "Distributor produk konsumsi halal untuk pasar tradisional.",
-    tanggalBerdiri: "2019-09-05",
-    email: "admin@rezekibersama.id",
-    telepon: "+62 22 7788 9900",
-    alamat: "Jl. Merdeka No. 88, Bandung",
-    website: "https://rezekibersama.id",
-    statusLegalitas: "pending_renewal",
-    dokumen: [
-      {
-        id: "DOC-002-1",
-        jenis: "Akta Pendirian",
-        nomor: "AKT/2019/0905",
-        tanggalTerbit: "2019-09-05",
-        tanggalKedaluwarsa: "2039-09-05",
-        status: "valid",
-      },
-      {
-        id: "DOC-002-2",
-        jenis: "SIUP",
-        nomor: "SIUP/2020/1122",
-        tanggalTerbit: "2020-11-22",
-        tanggalKedaluwarsa: "2025-11-22",
-        status: "pending_renewal",
-      },
-    ],
-  },
-  {
-    id: "CMP-003",
-    nama: "PT Hijau Lestari Nusantara",
-    jenis: "PT",
-    sektor: "Agribisnis",
-    deskripsi:
-      "Pengelola perkebunan kopi arabika berkelanjutan di Sumatera Barat.",
-    tanggalBerdiri: "2014-01-20",
-    email: "info@hijaulestari.co.id",
-    telepon: "+62 751 4433 221",
-    alamat: "Jl. Raya Padang - Bukittinggi KM 25, Sumatera Barat",
-    website: "https://hijaulestari.co.id",
-    statusLegalitas: "expired",
-    dokumen: [
-      {
-        id: "DOC-003-1",
-        jenis: "Akta Pendirian",
-        nomor: "AKT/2014/0120",
-        tanggalTerbit: "2014-01-20",
-        tanggalKedaluwarsa: "2034-01-20",
-        status: "valid",
-      },
-      {
-        id: "DOC-003-2",
-        jenis: "TDP",
-        nomor: "TDP/2019/0011",
-        tanggalTerbit: "2019-02-14",
-        tanggalKedaluwarsa: "2024-02-14",
-        status: "expired",
-      },
-      {
-        id: "DOC-003-3",
-        jenis: "Sertifikat Halal",
-        nomor: "LPPOM/HLL/2021/778",
-        tanggalTerbit: "2021-06-10",
-        tanggalKedaluwarsa: "2024-06-10",
-        status: "expired",
-      },
-    ],
-  },
-  {
-    id: "CMP-004",
-    nama: "Koperasi Syariah Ummat Sejahtera",
-    jenis: "Koperasi",
-    sektor: "Simpan Pinjam Syariah",
-    deskripsi:
-      "Koperasi berbasis syariah yang memberdayakan anggota melalui pembiayaan mikro.",
-    tanggalBerdiri: "2012-06-30",
-    email: "sekretariat@ksummat.or.id",
-    telepon: "+62 274 9988 776",
-    alamat: "Jl. Kaliurang KM 8, Sleman, DIY",
-    website: "https://ksummat.or.id",
-    statusLegalitas: "valid",
-    dokumen: [
-      {
-        id: "DOC-004-1",
-        jenis: "Akta Pendirian",
-        nomor: "AKT/2012/0630",
-        tanggalTerbit: "2012-06-30",
-        tanggalKedaluwarsa: "2042-06-30",
-        status: "valid",
-      },
-      {
-        id: "DOC-004-2",
-        jenis: "Izin Usaha Koperasi",
-        nomor: "IUK/2013/0044",
-        tanggalTerbit: "2013-02-11",
-        tanggalKedaluwarsa: "2028-02-11",
-        status: "valid",
-      },
-    ],
-  },
-];
+export async function fetchCompanies(page = 1, limit = 10): Promise<{
+  items: Company[];
+  total: number;
+  totalPages: number;
+}> {
+  const { data } = await api.get("/companies", { params: { page, limit } });
+  const list: ApiCompany[] = data?.data ?? [];
+  const meta = data?.meta ?? { total: list.length, totalPages: 1 };
+  return {
+    items: list.map(mapApiCompany),
+    total: meta.total,
+    totalPages: meta.totalPages,
+  };
+}
 
-export async function fetchCompanies(): Promise<Company[]> {
-  return dummyCompanies;
+export async function fetchCompany(companyId: string): Promise<Company> {
+  const { data } = await api.get(`/companies/${companyId}`);
+  return mapApiCompany(data);
+}
+
+export async function createCompany(payload: NewCompanyInput): Promise<Company> {
+  const { data } = await api.post("/companies", { ...payload, status: "active" });
+  return mapApiCompany(data);
+}
+
+export async function updateCompany(
+  companyId: string,
+  payload: Partial<{ company_name: string; industry_sector: string; director_phone: string; status: string }>
+): Promise<Company> {
+  const { data } = await api.put(`/companies/${companyId}`, payload);
+  return mapApiCompany(data);
+}
+
+export async function deleteCompany(companyId: string): Promise<void> {
+  await api.delete(`/companies/${companyId}`);
+}
+
+// --- Company Documents ---
+
+export async function fetchCompanyDocuments(companyId: string) {
+  const { data } = await api.get(`/companies/${companyId}/documents`);
+  return data?.data ?? [];
+}
+
+export async function uploadCompanyDocument(
+  companyId: string,
+  documentType: string,
+  documentName: string,
+  file: File
+): Promise<void> {
+  const formData = new FormData();
+  formData.append("company_id", companyId);
+  formData.append("document_type", documentType);
+  formData.append("document_name", documentName);
+  formData.append("storage_provider", "cloudflare");
+  formData.append("file", file);
+  await api.post("/companies/documents", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+}
+
+export async function downloadCompanyDocument(documentId: string): Promise<string> {
+  const { data } = await api.get(`/companies/documents/${documentId}/download`);
+  return data?.data?.downloadUrl ?? "";
+}
+
+export async function deleteCompanyDocument(documentId: string): Promise<void> {
+  await api.delete(`/companies/documents/${documentId}`);
 }

@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Select,
   SelectContent,
@@ -5,7 +7,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/select";
-import { Badge } from "@/shared/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -16,16 +17,20 @@ import {
 } from "@/shared/components/ui/table";
 
 import type { Company } from "./types";
-import {
-  formatDateID,
-  legalStatusBadgeVariant,
-  legalStatusLabel,
-} from "./utils";
+import { formatDateID } from "./utils";
 
 interface LegalDocumentsPanelProps {
   companies: Company[];
   selectedId: string;
   onSelectedIdChange: (id: string) => void;
+}
+
+// Helper untuk format ukuran file
+function formatFileSize(bytes: number): string {
+  if (!bytes) return "0 B";
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${kb.toFixed(1)} KB`;
+  return `${(kb / 1024).toFixed(1)} MB`;
 }
 
 export function LegalDocumentsPanel({
@@ -44,8 +49,7 @@ export function LegalDocumentsPanel({
             Dokumen Legalitas
           </h2>
           <p className="text-xs text-muted-foreground">
-            Daftar dokumen legal per perusahaan. Dokumen kedaluwarsa ditandai
-            merah.
+            Daftar dokumen legal per perusahaan yang telah diunggah.
           </p>
         </div>
         <Select value={company?.id ?? ""} onValueChange={onSelectedIdChange}>
@@ -65,11 +69,11 @@ export function LegalDocumentsPanel({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Jenis</TableHead>
-              <TableHead>Nomor</TableHead>
-              <TableHead>Tanggal Terbit</TableHead>
-              <TableHead>Kedaluwarsa</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>Nama Dokumen</TableHead>
+              <TableHead>Tipe</TableHead>
+              <TableHead>Ukuran File</TableHead>
+              <TableHead>Tanggal Diunggah</TableHead>
+              <TableHead>Diunggah Oleh</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -83,36 +87,25 @@ export function LegalDocumentsPanel({
                 </TableCell>
               </TableRow>
             ) : (
-              company.dokumen.map((doc) => {
-                const expired = doc.status === "expired";
-                return (
-                  <TableRow key={doc.id}>
-                    <TableCell className="font-medium text-foreground">
-                      {doc.jenis}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {doc.nomor}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatDateID(doc.tanggalTerbit)}
-                    </TableCell>
-                    <TableCell
-                      className={
-                        expired
-                          ? "text-sm font-medium text-danger"
-                          : "text-sm text-muted-foreground"
-                      }
-                    >
-                      {formatDateID(doc.tanggalKedaluwarsa)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={legalStatusBadgeVariant[doc.status]}>
-                        {legalStatusLabel[doc.status]}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
+              company.dokumen.map((doc) => (
+                <TableRow key={doc.id}>
+                  <TableCell className="font-medium text-foreground">
+                    {doc.nama}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground uppercase">
+                    {doc.tipe}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {formatFileSize(doc.fileSizeBytes)}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {formatDateID(doc.uploadedAt)}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {doc.uploadedBy || "-"}
+                  </TableCell>
+                </TableRow>
+              ))
             )}
           </TableBody>
         </Table>

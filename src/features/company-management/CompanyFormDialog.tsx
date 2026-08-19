@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from "react";
 
 import { Button } from "@/shared/components/ui/button";
@@ -19,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/select";
+import { Separator } from "@/shared/components/ui/separator";
 
 import type { CompanyType, NewCompanyInput } from "./types";
 
@@ -28,18 +31,29 @@ interface CompanyFormDialogProps {
   onSubmit: (input: NewCompanyInput) => void;
 }
 
-const jenisOptions: CompanyType[] = ["PT", "CV", "Firma", "Koperasi", "UD"];
+const jenisOptions: CompanyType[] = [
+  "PT",
+  "CV",
+  "Firma",
+  "Koperasi",
+  "UD",
+  "Perorangan",
+];
 
 const emptyForm: NewCompanyInput = {
-  nama: "",
-  jenis: "PT",
-  sektor: "",
-  deskripsi: "",
-  tanggalBerdiri: "",
-  email: "",
-  telepon: "",
-  alamat: "",
+  company_name: "",
+  company_type: "PT",
+  industry_sector: "",
+  description: "",
+  director_name: "",
+  director_phone: "",
+  company_email: "",
+  director_privy: "",
+  company_address: "",
   website: "",
+  heirs_director_name: "",
+  heirs_director_phone: "",
+  heirs_director_address: "",
 };
 
 export function CompanyFormDialog({
@@ -58,10 +72,9 @@ export function CompanyFormDialog({
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!form.nama || !form.email) return;
+    if (!form.company_name || !form.company_email) return;
     onSubmit(form);
     reset();
-    onOpenChange(false);
   };
 
   return (
@@ -72,115 +85,181 @@ export function CompanyFormDialog({
         onOpenChange(next);
       }}
     >
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Tambah Perusahaan</DialogTitle>
           <DialogDescription>
-            Isi data profil perusahaan. Dokumen legalitas dapat ditambahkan
-            setelah perusahaan tersimpan.
+            Isi data profil perusahaan, data direktur, dan ahli waris. Dokumen legalitas dapat ditambahkan
+            setelah profil tersimpan.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="cmp-nama">Nama Perusahaan</Label>
-              <Input
-                id="cmp-nama"
-                placeholder="PT Contoh Sejahtera"
-                value={form.nama}
-                onChange={(e) => update("nama", e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cmp-jenis">Jenis</Label>
-              <Select
-                value={form.jenis}
-                onValueChange={(v) => update("jenis", v as CompanyType)}
-              >
-                <SelectTrigger id="cmp-jenis">
-                  <SelectValue placeholder="Pilih jenis" />
-                </SelectTrigger>
-                <SelectContent>
-                  {jenisOptions.map((j) => (
-                    <SelectItem key={j} value={j}>
-                      {j}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cmp-sektor">Sektor Industri</Label>
-              <Input
-                id="cmp-sektor"
-                placeholder="Contoh: Keuangan Syariah"
-                value={form.sektor}
-                onChange={(e) => update("sektor", e.target.value)}
-              />
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="cmp-deskripsi">Deskripsi</Label>
-              <Textarea
-                id="cmp-deskripsi"
-                placeholder="Deskripsi singkat perusahaan…"
-                value={form.deskripsi}
-                onChange={(e) => update("deskripsi", e.target.value)}
-                rows={3}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cmp-tanggal">Tanggal Berdiri</Label>
-              <Input
-                id="cmp-tanggal"
-                type="date"
-                value={form.tanggalBerdiri}
-                onChange={(e) => update("tanggalBerdiri", e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cmp-email">Email</Label>
-              <Input
-                id="cmp-email"
-                type="email"
-                placeholder="corporate@perusahaan.id"
-                value={form.email}
-                onChange={(e) => update("email", e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cmp-telepon">Telepon</Label>
-              <Input
-                id="cmp-telepon"
-                type="tel"
-                placeholder="+62 21 5555 1234"
-                value={form.telepon}
-                onChange={(e) => update("telepon", e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cmp-website">Website</Label>
-              <Input
-                id="cmp-website"
-                type="url"
-                placeholder="https://perusahaan.id"
-                value={form.website}
-                onChange={(e) => update("website", e.target.value)}
-              />
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="cmp-alamat">Alamat</Label>
-              <Textarea
-                id="cmp-alamat"
-                placeholder="Alamat lengkap kantor…"
-                value={form.alamat}
-                onChange={(e) => update("alamat", e.target.value)}
-                rows={2}
-              />
+
+        <form onSubmit={handleSubmit} className="space-y-6 py-2">
+          {/* SEKSI 1: DATA PERUSAHAAN */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-semibold text-foreground">1. Data Perusahaan</h4>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="cmp-nama">
+                  Nama Perusahaan <span className="text-danger">*</span>
+                </Label>
+                <Input
+                  id="cmp-nama"
+                  placeholder="PT Contoh Sejahtera"
+                  value={form.company_name}
+                  onChange={(e) => update("company_name", e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cmp-jenis">Jenis Perusahaan</Label>
+                <Select
+                  value={form.company_type}
+                  onValueChange={(v) => update("company_type", v as string)}
+                >
+                  <SelectTrigger id="cmp-jenis">
+                    <SelectValue placeholder="Pilih jenis" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {jenisOptions.map((j) => (
+                      <SelectItem key={j} value={j}>
+                        {j}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cmp-sektor">Sektor Industri</Label>
+                <Input
+                  id="cmp-sektor"
+                  placeholder="Contoh: Keuangan Syariah"
+                  value={form.industry_sector}
+                  onChange={(e) => update("industry_sector", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cmp-email">
+                  Email Perusahaan <span className="text-danger">*</span>
+                </Label>
+                <Input
+                  id="cmp-email"
+                  type="email"
+                  placeholder="corporate@perusahaan.id"
+                  value={form.company_email}
+                  onChange={(e) => update("company_email", e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cmp-website">Website</Label>
+                <Input
+                  id="cmp-website"
+                  type="url"
+                  placeholder="https://perusahaan.id"
+                  value={form.website}
+                  onChange={(e) => update("website", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="cmp-deskripsi">Deskripsi Singkat</Label>
+                <Textarea
+                  id="cmp-deskripsi"
+                  placeholder="Tentang perusahaan..."
+                  value={form.description}
+                  onChange={(e) => update("description", e.target.value)}
+                  rows={2}
+                />
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="cmp-alamat">Alamat Perusahaan</Label>
+                <Textarea
+                  id="cmp-alamat"
+                  placeholder="Alamat lengkap kantor pusat..."
+                  value={form.company_address}
+                  onChange={(e) => update("company_address", e.target.value)}
+                  rows={2}
+                />
+              </div>
             </div>
           </div>
-          <DialogFooter>
+
+          <Separator />
+
+          {/* SEKSI 2: DATA DIREKTUR */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-semibold text-foreground">2. Data Direktur</h4>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="dir-nama">Nama Direktur</Label>
+                <Input
+                  id="dir-nama"
+                  placeholder="Nama lengkap direktur"
+                  value={form.director_name}
+                  onChange={(e) => update("director_name", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dir-telepon">No. Telepon Direktur</Label>
+                <Input
+                  id="dir-telepon"
+                  type="tel"
+                  placeholder="+62 812..."
+                  value={form.director_phone}
+                  onChange={(e) => update("director_phone", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dir-privy">Privy ID</Label>
+                <Input
+                  id="dir-privy"
+                  placeholder="ID Privy"
+                  value={form.director_privy}
+                  onChange={(e) => update("director_privy", e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* SEKSI 3: DATA AHLI WARIS */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-semibold text-foreground">3. Data Ahli Waris Direktur</h4>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="heir-nama">Nama Ahli Waris</Label>
+                <Input
+                  id="heir-nama"
+                  placeholder="Nama lengkap ahli waris"
+                  value={form.heirs_director_name}
+                  onChange={(e) => update("heirs_director_name", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="heir-telepon">No. Telepon Ahli Waris</Label>
+                <Input
+                  id="heir-telepon"
+                  type="tel"
+                  placeholder="+62 812..."
+                  value={form.heirs_director_phone}
+                  onChange={(e) => update("heirs_director_phone", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="heir-alamat">Alamat Ahli Waris</Label>
+                <Textarea
+                  id="heir-alamat"
+                  placeholder="Alamat lengkap ahli waris..."
+                  value={form.heirs_director_address}
+                  onChange={(e) => update("heirs_director_address", e.target.value)}
+                  rows={2}
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="pt-4">
             <Button
               type="button"
               variant="ghost"

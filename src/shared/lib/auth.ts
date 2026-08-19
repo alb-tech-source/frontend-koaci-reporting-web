@@ -1,37 +1,21 @@
-import { jwtDecode } from "jwt-decode";
 import api from "./axios";
+import { useAuthStore } from "../store/authStore";
 
-interface JwtPayload {
-  role: string;
-  permissions: string[];
-  userId?: string;
-  [key: string]: unknown;
-}
-
-function getTokenFromCookie(): string | null {
-  if (typeof document === "undefined") return null;
-  const match = new RegExp(/(^|;\s*)access_token=([^;]+)/).exec(document.cookie);
-  return match ? decodeURIComponent(match[2]) : null;
-}
-
-export function getCurrentUser(): JwtPayload | null {
+export function getCurrentUser() {
   if (typeof window === "undefined") return null;
-  
-  // Prioritaskan cookie, fallback ke localStorage untuk kompatibilitas
-  const token = getTokenFromCookie() || localStorage.getItem("access_token");
-  if (!token) return null;
-  try {
-    return jwtDecode<JwtPayload>(token);
-  } catch {
-    return null;
-  }
+  return useAuthStore.getState().user;
 }
 
-export async function fetchCurrentUserProfile() {
-  const user = getCurrentUser();
-  if (!user) return null;
-  const { data } = await api.get(`/users/${user.userId}`);
-  return data.data;
+export function getCurrentRole(): string | null {
+  return getCurrentUser()?.role ?? null;
+}
+
+export function isInvestor(): boolean {
+  return getCurrentRole() === "investor";
+}
+
+export function isUser(): boolean {
+  return getCurrentRole() === "user";
 }
 
 export function hasPermission(permissionKey: string): boolean {
@@ -40,25 +24,15 @@ export function hasPermission(permissionKey: string): boolean {
   return user?.permissions?.includes(permissionKey) ?? false;
 }
 
-export function getCurrentRole(): string | null {
-  return getCurrentUser()?.role ?? null;
-}
-
-// logout membersihkan cookie & localStorage, lalu redirect
-export function logout(redirectTo: string = "/") {
+export async function logout(redirectTo: string = "/") {
   if (typeof window === "undefined") return;
-  localStorage.removeItem("access_token");
-  localStorage.removeItem("refresh_token");
-  document.cookie = "access_token=; path=/; max-age=0; SameSite=Lax";
-  window.location.href = redirectTo;
-}
 
-export async function forgotPassword(email: string) {
-  const { data } = await api.post("/auth/forgot-password", { email });
-  return data;
-}
-
-export async function resetPassword(token: string, newPassword: string) {
-  const { data } = await api.post("/auth/reset-password", { token, newPassword });
-  return data;
+  try {
+    await api.post("/auth/logout");
+  } catch (error) {
+    console.error("Gagal memanggil API logout di server", error);
+  } finally {
+    useAuthStore.getState().clearAuth();
+    window.location.href = redirectTo;
+  }
 }
