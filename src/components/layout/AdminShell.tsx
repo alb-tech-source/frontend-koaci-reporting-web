@@ -1,6 +1,5 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -45,7 +44,9 @@ import {
   AlertDialogTrigger,
 } from "@/shared/components/ui/alert-dialog";
 import { cn } from "@/shared/lib/utils";
-import { hasPermission, logout, getCurrentUser, fetchCurrentUserProfile } from "@/shared/lib/auth";
+
+import { logout } from "@/shared/lib/auth";
+import { useAuthStore } from "@/shared/store/authStore";
 
 export interface AdminNavItem {
   to: string;
@@ -72,17 +73,12 @@ export function AdminShell({
   children,
   navItems = defaultAdminNav,
   title = "Koaci Admin",
-  user,
+  user: fallbackUser,
 }: Readonly<AdminShellProps>) {
-  const canViewUsers = hasPermission("users:read");
-  const currentUser = getCurrentUser();
-  const currentRole = currentUser?.role ?? ""; 
-
-  const { data: profile } = useQuery({
-    queryKey: ["current-user-profile"],
-    queryFn: fetchCurrentUserProfile,
-    staleTime: Infinity,
-  });
+  const user = useAuthStore((state) => state.user);
+  
+  const currentRole = user?.role ?? ""; 
+  const canViewUsers = user?.role === "superadmin" || (user?.permissions?.includes("users:read") ?? false);
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -100,8 +96,9 @@ export function AdminShell({
     return true;
   });
 
-  const displayName = profile?.firstname ?? "Pengguna";
-  const displayEmail = profile?.email ?? currentUser?.email ?? user?.email ?? "admin@koaci.id";
+  // Ambil nama dari profil, fallback ke default jika tidak ada
+  const displayName = user?.firstname ?? "Pengguna";
+  const displayEmail = user?.email ?? fallbackUser?.email ?? "admin@koaci.id";
   const initials = displayName.slice(0, 2).toUpperCase();
   
   if (!mounted) {
