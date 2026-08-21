@@ -33,6 +33,9 @@ export async function logout(redirectTo: string = "/") {
     console.error("Gagal memanggil API logout di server", error);
   } finally {
     useAuthStore.getState().clearAuth();
+    
+    document.cookie = "user_role=; path=/; max-age=0";
+    
     window.location.href = redirectTo;
   }
 }

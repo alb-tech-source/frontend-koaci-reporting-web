@@ -21,17 +21,15 @@ export default function AdminLoginPage() {
     setError("");
     setLoading(true);
     try {
-      // 1. Panggil API Login (Hanya agar backend menset HttpOnly Cookie)
       await login({ email, password });
 
-      // 2. Panggil API /auth/me (Browser otomatis membawa Cookie dari langkah 1)
       const profileResponse = await fetchCurrentUser();
 
-      // 3. Simpan identitas UI ke Zustand
       if (profileResponse?.success && profileResponse.data) {
         setAuth(profileResponse.data); 
         
-        // 4. Redirect ke dashboard admin
+        document.cookie = `user_role=${profileResponse.data.role}; path=/; max-age=86400`;
+        
         router.push("/admin/dashboard");
       } else {
         setError("Gagal memuat profil pengguna dari server.");

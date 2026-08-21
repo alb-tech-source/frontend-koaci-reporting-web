@@ -233,9 +233,6 @@ function CompanyManagementPage() {
                           <div className="font-medium text-foreground">
                             {cmp.nama}
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            {cmp.id}
-                          </div>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {cmp.jenis}
@@ -244,7 +241,6 @@ function CompanyManagementPage() {
                           {cmp.sektor}
                         </TableCell>
                         <TableCell>
-                          {/* ✅ FIX: Ganti dengan mapper fungsi baru */}
                           <Badge variant={getStatusBadgeVariant(cmp.status) as any}>
                             {getStatusLabel(cmp.status)}
                           </Badge>
