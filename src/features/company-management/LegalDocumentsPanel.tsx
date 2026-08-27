@@ -57,12 +57,15 @@ export function LegalDocumentsPanel({
             <SelectValue placeholder="Pilih perusahaan" />
           </SelectTrigger>
           <SelectContent>
-            {companies.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.nama}
-              </SelectItem>
-            ))}
-          </SelectContent>
+              {companies.map((c, index) => (
+                <SelectItem 
+                  key={c.id || `company-fallback-${index}`} 
+                  value={c.id || `val-${index}`}
+                >
+                  {c.nama || "Perusahaan Tanpa Nama"}
+                </SelectItem>
+              ))}
+            </SelectContent>
         </Select>
       </div>
       <div className="overflow-x-auto">

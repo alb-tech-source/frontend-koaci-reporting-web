@@ -1,9 +1,9 @@
 "use client";
 
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { queryOptions, useSuspenseQuery, useMutation } from "@tanstack/react-query";
 import { AlertTriangle, Loader2, MoreHorizontal, Plus, Search } from "lucide-react";
 import { Suspense, useMemo, useState } from "react";
-import { toast } from "sonner"; 
+import { toast } from "sonner";
 
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
@@ -42,29 +42,36 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui
 
 import { CompanyFormDialog } from "@/features/company-management/CompanyFormDialog";
 import { LegalDocumentsPanel } from "@/features/company-management/LegalDocumentsPanel";
-import { fetchCompanies, createCompany, deleteCompany } from "@/features/company-management/api";
+import { fetchCompanies, createCompany, updateCompany, deleteCompany } from "@/features/company-management/api";
 import type {
   Company,
   NewCompanyInput,
-  CompanyStatus // ✅ Ganti LegalStatus menjadi CompanyStatus
+  CompanyStatus,
 } from "@/features/company-management/types";
 
-// Fungsi mapper status sementara karena type utils berubah
 function getStatusLabel(status: CompanyStatus) {
   switch (status) {
-    case "active": return "Valid / Aktif";
-    case "inactive": return "Tidak Aktif";
-    case "blacklist": return "Blacklist";
-    default: return status;
+    case "active":
+      return "Valid / Aktif";
+    case "inactive":
+      return "Tidak Aktif";
+    case "blacklist":
+      return "Blacklist";
+    default:
+      return status;
   }
 }
 
 function getStatusBadgeVariant(status: CompanyStatus) {
   switch (status) {
-    case "active": return "success";
-    case "inactive": return "outline";
-    case "blacklist": return "danger";
-    default: return "outline";
+    case "active":
+      return "success";
+    case "inactive":
+      return "outline";
+    case "blacklist":
+      return "danger";
+    default:
+      return "outline";
   }
 }
 
@@ -75,9 +82,9 @@ const companiesQuery = queryOptions({
 
 export default function AdminPerusahaanRoute() {
   return (
-      <Suspense fallback={<PageSkeleton />}>
-        <CompanyManagementPage />
-      </Suspense>
+    <Suspense fallback={<PageSkeleton />}>
+      <CompanyManagementPage />
+    </Suspense>
   );
 }
 
@@ -89,12 +96,16 @@ function CompanyManagementPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<CompanyStatus | "all">("all");
   const [page, setPage] = useState(1);
-  
-  // State Dialog & Hapus
+  const [activeTab, setActiveTab] = useState<string>("perusahaan");
+
   const [open, setOpen] = useState(false);
+  const [formMode, setFormMode] = useState<"create" | "edit">("create");
+  const [editingTarget, setEditingTarget] = useState<Company | null>(null);
+  
   const [selectedDocCompanyId, setSelectedDocCompanyId] = useState<string>(
-    raw.items[0]?.id ?? "", // ✅ FIX: Ganti `data` menjadi `raw.items`
+    raw.items[0]?.id ?? "",
   );
+  
   const [deleteTarget, setDeleteTarget] = useState<Company | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -105,7 +116,6 @@ function CompanyManagementPage() {
         !q ||
         c.nama.toLowerCase().includes(q) ||
         c.sektor.toLowerCase().includes(q);
-      // ✅ FIX: Ganti `statusLegalitas` menjadi `status`
       const matchStatus = statusFilter === "all" || c.status === statusFilter;
       return matchQ && matchStatus;
     });
@@ -118,16 +128,35 @@ function CompanyManagementPage() {
     currentPage * PAGE_SIZE,
   );
 
-  const handleAdd = async (input: NewCompanyInput) => {
-    try {
-      const created = await createCompany(input);
+  const createMutation = useMutation({
+    mutationFn: (payload: NewCompanyInput) => createCompany(payload),
+    onSuccess: (created) => {
       setCompanies((prev) => [created, ...prev]);
       toast.success("Perusahaan berhasil ditambahkan!");
       setOpen(false);
-    } catch {
-      toast.error("Gagal menambahkan perusahaan.");
-    }
-  };
+    },
+    onError: (err: any) => {
+      const errorMessage =
+        err?.response?.data?.message || "Gagal menambahkan perusahaan.";
+      toast.error(errorMessage);
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<NewCompanyInput> }) =>
+      updateCompany(id, payload),
+    onSuccess: (updated) => {
+      setCompanies((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+      toast.success("Perusahaan berhasil diperbarui!");
+      setOpen(false);
+      setEditingTarget(null);
+    },
+    onError: (err: any) => {
+      const errorMessage =
+        err?.response?.data?.message || "Gagal memperbarui perusahaan.";
+      toast.error(errorMessage);
+    },
+  });
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -144,6 +173,14 @@ function CompanyManagementPage() {
     }
   };
 
+  const handleSubmitForm = (input: NewCompanyInput) => {
+    if (formMode === "edit" && editingTarget) {
+      updateMutation.mutate({ id: editingTarget.id, payload: input });
+    } else {
+      createMutation.mutate(input);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -155,13 +192,20 @@ function CompanyManagementPage() {
             Kelola profil dan dokumen legalitas perusahaan mitra.
           </p>
         </div>
-        <Button variant="primary" onClick={() => setOpen(true)}>
+        <Button
+          variant="primary"
+          onClick={() => {
+            setFormMode("create");
+            setEditingTarget(null);
+            setOpen(true);
+          }}
+        >
           <Plus className="h-4 w-4" />
           Tambah Perusahaan
         </Button>
       </header>
 
-      <Tabs defaultValue="perusahaan" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="perusahaan">Daftar Perusahaan</TabsTrigger>
           <TabsTrigger value="dokumen">Dokumen Legalitas</TabsTrigger>
@@ -227,11 +271,11 @@ function CompanyManagementPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    pageItems.map((cmp) => (
-                      <TableRow key={cmp.id}>
+                    pageItems.map((cmp, index) => (
+                      <TableRow key={cmp.id || `row-fallback-${index}`}>
                         <TableCell>
                           <div className="font-medium text-foreground">
-                            {cmp.nama}
+                            {cmp.nama || "Perusahaan Tanpa Nama"}
                           </div>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
@@ -258,20 +302,25 @@ function CompanyManagementPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem
-                                onSelect={() =>
-                                  setSelectedDocCompanyId(cmp.id)
-                                }
+                                onSelect={() => {
+                                  setSelectedDocCompanyId(cmp.id);
+                                  setActiveTab("dokumen");
+                                }}
                               >
                                 Lihat dokumen
                               </DropdownMenuItem>
-                              
-                              <DropdownMenuItem 
-                                onSelect={() => toast.info("Fitur Edit Perusahaan dalam tahap pengembangan.")}
+
+                              <DropdownMenuItem
+                                onSelect={() => {
+                                  setEditingTarget(cmp);
+                                  setFormMode("edit");
+                                  setOpen(true);
+                                }}
                               >
                                 Edit
                               </DropdownMenuItem>
 
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 className="text-danger focus:text-danger"
                                 onSelect={() => setDeleteTarget(cmp)}
                               >
@@ -333,15 +382,22 @@ function CompanyManagementPage() {
         </TabsContent>
       </Tabs>
 
-      {/* MODAL FORM */}
       <CompanyFormDialog
         open={open}
-        onOpenChange={setOpen}
-        onSubmit={handleAdd}
+        onOpenChange={(isOpen) => {
+          setOpen(isOpen);
+          if (!isOpen) setEditingTarget(null);
+        }}
+        mode={formMode}
+        initialData={editingTarget}
+        onSubmit={handleSubmitForm}
+        isSubmitting={createMutation.isPending || updateMutation.isPending}
       />
 
-      {/* MODAL KONFIRMASI HAPUS */}
-      <Dialog open={deleteTarget !== null} onOpenChange={(isOpen) => !isOpen && !isDeleting && setDeleteTarget(null)}>
+      <Dialog
+        open={deleteTarget !== null}
+        onOpenChange={(isOpen) => !isOpen && !isDeleting && setDeleteTarget(null)}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <div className="mb-2 grid h-10 w-10 place-items-center rounded-full bg-danger/10">
@@ -349,23 +405,22 @@ function CompanyManagementPage() {
             </div>
             <DialogTitle>Hapus Perusahaan</DialogTitle>
             <DialogDescription>
-              Yakin ingin menghapus profil perusahaan <span className="font-semibold text-foreground">{deleteTarget?.nama}</span>? 
-              Tindakan ini permanen dan akan menghapus semua dokumen yang terkait.
+              Yakin ingin menghapus profil perusahaan{" "}
+              <span className="font-semibold text-foreground">
+                {deleteTarget?.nama}
+              </span>
+              ? Tindakan ini permanen dan akan menghapus semua dokumen yang terkait.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setDeleteTarget(null)}
               disabled={isDeleting}
             >
               Batal
             </Button>
-            <Button 
-              variant="danger" 
-              onClick={handleDelete}
-              disabled={isDeleting}
-            >
+            <Button variant="danger" onClick={handleDelete} disabled={isDeleting}>
               {isDeleting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

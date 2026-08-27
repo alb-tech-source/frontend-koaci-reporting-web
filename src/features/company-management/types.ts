@@ -16,8 +16,8 @@ export interface ApiCompany {
   company_address: string;
   website: string;
   heirs_director_name: string;
-  heirs_director_phone: string;
-  heirs_director_address: string;
+  heirs_director_phone?: string;
+  heirs_director_address?: string;
   status: CompanyStatus;
   createdAt: string;
   updatedAt: string;
@@ -53,8 +53,8 @@ export interface Company {
   direktorTelepon: string;
   direktorPrivy: string;
   ahliWarisNama: string;
-  ahliWarisTelepon: string;
-  ahliWarisAlamat: string;
+  ahliWarisTelepon?: string;
+  ahliWarisAlamat?: string;
   status: CompanyStatus;
   createdAt: string;
   dokumen: CompanyDocument[];
@@ -83,38 +83,39 @@ export interface NewCompanyInput {
   company_address: string;
   website: string;
   heirs_director_name: string;
-  heirs_director_phone: string;
-  heirs_director_address: string;
+  heirs_director_phone?: string;
+  heirs_director_address?: string;
 }
 
 // Mapper
+// Mapper
 export function mapApiCompany(c: ApiCompany): Company {
   return {
-    id: c.company_id,
-    nama: c.company_name,
-    jenis: c.company_type,
-    sektor: c.industry_sector,
-    deskripsi: c.description,
-    email: c.company_email,
-    telepon: c.director_phone,
-    alamat: c.company_address,
-    website: c.website,
-    direktorNama: c.director_name,
-    direktorTelepon: c.director_phone,
-    direktorPrivy: c.director_privy,
-    ahliWarisNama: c.heirs_director_name,
-    ahliWarisTelepon: c.heirs_director_phone,
-    ahliWarisAlamat: c.heirs_director_address,
-    status: c.status,
-    createdAt: c.createdAt,
+    id: c.company_id || (c as any).id,
+    nama: c.company_name || (c as any).name || "Nama Tidak Diketahui",
+    jenis: c.company_type || (c as any).type || "PT",
+    sektor: c.industry_sector || (c as any).sector || "-",
+    deskripsi: c.description || "-",
+    email: c.company_email || (c as any).email || "-",
+    telepon: c.director_phone || (c as any).phone || "-",
+    alamat: c.company_address || (c as any).address || "-",
+    website: c.website || "-",
+    direktorNama: c.director_name || "-",
+    direktorTelepon: c.director_phone || "-",
+    direktorPrivy: c.director_privy || "-",
+    ahliWarisNama: c.heirs_director_name || "-",
+    ahliWarisTelepon: c.heirs_director_phone || "-",
+    ahliWarisAlamat: c.heirs_director_address || "-",
+    status: c.status || "active",
+    createdAt: c.createdAt || new Date().toISOString(),
     dokumen: (c.companyDocument ?? []).map((d) => ({
-      id: d.document_id,
-      tipe: d.document_type,
-      nama: d.document_name,
-      provider: d.storage_provider,
+      id: d.document_id || (d as any).id,
+      tipe: d.document_type || "-",
+      nama: d.document_name || "-",
+      provider: d.storage_provider || "-",
       fileSizeBytes: parseInt(d.file_size_bytes, 10) || 0,
-      mimeType: d.mime_type,
-      uploadedAt: d.uploaded_at,
+      mimeType: d.mime_type || "application/pdf",
+      uploadedAt: d.uploaded_at || new Date().toISOString(),
       uploadedBy: d.user ? `${d.user.firstname} ${d.user.lastname}`.trim() : undefined,
     })),
   };

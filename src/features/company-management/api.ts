@@ -29,7 +29,7 @@ export async function createCompany(payload: NewCompanyInput): Promise<Company> 
 
 export async function updateCompany(
   companyId: string,
-  payload: Partial<{ company_name: string; industry_sector: string; director_phone: string; status: string }>
+  payload: Partial<NewCompanyInput>
 ): Promise<Company> {
   const { data } = await api.put(`/companies/${companyId}`, payload);
   return mapApiCompany(data);
