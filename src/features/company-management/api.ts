@@ -42,7 +42,7 @@ export async function deleteCompany(companyId: string): Promise<void> {
 // --- Company Documents ---
 
 export async function fetchCompanyDocuments(companyId: string) {
-  const { data } = await api.get(`/companies/${companyId}/documents`);
+  const { data } = await api.get(`/company-documents/company/${companyId}`);
   return data?.data ?? [];
 }
 
@@ -58,16 +58,17 @@ export async function uploadCompanyDocument(
   formData.append("document_name", documentName);
   formData.append("storage_provider", "cloudflare");
   formData.append("file", file);
-  await api.post("/companies/documents", formData, {
+  
+  await api.post("/company-documents", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
 }
 
 export async function downloadCompanyDocument(documentId: string): Promise<string> {
-  const { data } = await api.get(`/companies/documents/${documentId}/download`);
+  const { data } = await api.get(`/company-documents/${documentId}/download`);
   return data?.data?.downloadUrl ?? "";
 }
 
 export async function deleteCompanyDocument(documentId: string): Promise<void> {
-  await api.delete(`/companies/documents/${documentId}`);
+  await api.delete(`/company-documents/${documentId}`);
 }
