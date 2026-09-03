@@ -2,11 +2,58 @@ export type UserRole = "superadmin" | "admin" | "investor" | "bod" | "user";
 export type UserStatus = "active" | "inactive";
 
 export const PERMISSIONS_FALLBACK = [
-  { key: "users:read",         label: "Lihat Data Pengguna" },
-  { key: "users:create",       label: "Tambah Pengguna" },
-  { key: "users:update",       label: "Ubah Data Pengguna" },
-  { key: "users:delete",       label: "Hapus Pengguna" },
-  { key: "users:manage_roles", label: "Kelola Role & Izin" },
+  // COMPANIES
+  { key: "companies:create:any", label: "Buat Perusahaan" },
+  { key: "companies:read:any", label: "Lihat Semua Perusahaan" },
+  { key: "companies:update:any", label: "Edit Perusahaan" },
+  { key: "companies:delete:any", label: "Hapus Perusahaan" },
+  { key: "company_documents:upload:any", label: "Unggah Dok. Perusahaan" },
+  { key: "company_documents:read:any", label: "Lihat Dok. Perusahaan" },
+  { key: "company_documents:update:any", label: "Edit Dok. Perusahaan" },
+  { key: "company_documents:download:any", label: "Unduh Dok. Perusahaan" },
+  { key: "company_documents:delete:any", label: "Hapus Dok. Perusahaan" },
+
+  // PROJECTS
+  { key: "projects:create:any", label: "Buat Proyek" },
+  { key: "projects:read:any", label: "Lihat Semua Proyek" },
+  { key: "projects:update:any", label: "Edit Proyek" },
+  { key: "projects:delete:any", label: "Hapus Proyek" },
+  { key: "project_documents:upload:any", label: "Unggah Dok. Proyek" },
+  { key: "project_documents:read:any", label: "Lihat Dok. Proyek" },
+  { key: "project_documents:update:any", label: "Edit Dok. Proyek" },
+  { key: "project_documents:download:any", label: "Unduh Dok. Proyek" },
+  { key: "project_documents:delete:any", label: "Hapus Dok. Proyek" },
+
+  // INVESTORS
+  { key: "investors:create:any", label: "Buat Investor (Semua)" },
+  { key: "investors:create:own", label: "Buat Investor (Sendiri)" },
+  { key: "investors:read:any", label: "Lihat Investor (Semua)" },
+  { key: "investors:read:own", label: "Lihat Profil Sendiri" },
+  { key: "investors:update:any", label: "Edit Investor (Semua)" },
+  { key: "investors:update:own", label: "Edit Profil Sendiri" },
+  { key: "investors:delete:any", label: "Hapus Investor (Semua)" },
+  { key: "investors:delete:own", label: "Hapus Profil Sendiri" },
+
+  // INVESTOR DOCUMENTS
+  { key: "investor_documents:upload:any", label: "Unggah Dok. Investor (Semua)" },
+  { key: "investor_documents:upload:own", label: "Unggah Dokumen Sendiri" },
+  { key: "investor_documents:download:any", label: "Unduh Dok. Investor (Semua)" },
+  { key: "investor_documents:download:own", label: "Unduh Dokumen Sendiri" },
+  { key: "investor_documents:delete:any", label: "Hapus Dok. Investor (Semua)" },
+  { key: "investor_documents:delete:own", label: "Hapus Dokumen Sendiri" },
+
+  // USERS & ROLES
+  { key: "users:create:any", label: "Buat User Baru" },
+  { key: "users:create:own", label: "Buat Akun Sendiri" },
+  { key: "users:read:any", label: "Lihat Semua User" },
+  { key: "users:read:own", label: "Lihat Akun Sendiri" },
+  { key: "users:update:any", label: "Edit Semua User" },
+  { key: "users:update:own", label: "Edit Akun Sendiri" },
+  { key: "users:delete:any", label: "Hapus Semua User" },
+  { key: "users:delete:own", label: "Hapus Akun Sendiri" },
+  { key: "roles:read:any", label: "Lihat Role Sistem" },
+  { key: "roles:read:own", label: "Lihat Role Sendiri" },
+  { key: "roles:update:any", label: "Edit Role Sistem" },
 ] as const;
 
 export type PermissionKey = string; 

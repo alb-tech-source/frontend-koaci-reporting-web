@@ -78,6 +78,7 @@ function getStatusBadgeVariant(status: CompanyStatus) {
 const companiesQuery = queryOptions({
   queryKey: ["admin", "companies"],
   queryFn: () => fetchCompanies(1, 100),
+  refetchInterval: 5000,
 });
 
 export default function AdminPerusahaanRoute() {
@@ -208,7 +209,7 @@ function CompanyManagementPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="perusahaan">Daftar Perusahaan</TabsTrigger>
-          <TabsTrigger value="dokumen">Dokumen Legalitas</TabsTrigger>
+          <TabsTrigger value="dokumen">Dokumen</TabsTrigger>
         </TabsList>
 
         <TabsContent value="perusahaan" className="space-y-0">

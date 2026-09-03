@@ -1,16 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { 
-  Download, 
-  Loader2, 
-  Plus, 
-  Trash2, 
-  FileText, 
-  AlertTriangle,
-  Upload // ✅ Tambahkan icon Upload
-} from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Download, Loader2, Plus, Trash2, FileText, AlertTriangle, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/shared/components/ui/button";
@@ -40,29 +32,26 @@ import {
   TableRow,
 } from "@/shared/components/ui/table";
 
-import type { Company, CompanyDocument } from "./types";
+import type { Project } from "./types";
 import { formatDateID } from "./utils";
 import {
-  uploadCompanyDocument,
-  downloadCompanyDocument,
-  deleteCompanyDocument,
+  fetchProjectDocuments,
+  uploadProjectDocument,
+  downloadProjectDocument,
+  deleteProjectDocument,
 } from "./api";
-import { getErrorMessage } from "@/shared/lib/axios";
 
-interface LegalDocumentsPanelProps {
-  companies: Company[];
+interface ProjectDocumentsPanelProps {
+  projects: Project[];
   selectedId: string;
   onSelectedIdChange: (id: string) => void;
 }
 
 const DOCUMENT_TYPES = [
-  "AKTA_PENDIRIAN",
-  "SK_KEMENKUMHAM",
-  "NPWP",
-  "NIB",
-  "SIUP",
-  "TDP",
-  "PROFIL_PERUSAHAAN",
+  "PROPOSAL",
+  "LAPORAN_KEUANGAN",
+  "MOU",
+  "KONTRAK",
   "LAINNYA",
 ];
 
@@ -73,44 +62,51 @@ function formatFileSize(bytes: number): string {
   return `${(kb / 1024).toFixed(1)} MB`;
 }
 
-export function LegalDocumentsPanel({
-  companies,
+export function ProjectDocumentsPanel({
+  projects,
   selectedId,
   onSelectedIdChange,
-}: Readonly<LegalDocumentsPanelProps>) {
+}: Readonly<ProjectDocumentsPanelProps>) {
   const queryClient = useQueryClient();
-  const company = companies.find((c) => c.id === selectedId) ?? companies[0] ?? null;
+  const project = projects.find((p) => p.projectId === selectedId) ?? projects[0] ?? null;
 
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<CompanyDocument | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [isDownloading, setIsDownloading] = useState<string | null>(null);
 
   const [docName, setDocName] = useState("");
   const [docType, setDocType] = useState(DOCUMENT_TYPES[0]);
   const [file, setFile] = useState<File | null>(null);
 
+  // Ambil daftar dokumen untuk proyek yang dipilih
+  const { data: documents = [], isLoading } = useQuery({
+    queryKey: ["admin", "project-documents", project?.projectId],
+    queryFn: () => fetchProjectDocuments(project!.projectId),
+    enabled: !!project?.projectId,
+  });
+
   const uploadMutation = useMutation({
     mutationFn: async () => {
-      if (!company || !file || !docName || !docType) throw new Error("Data tidak lengkap");
-      return uploadCompanyDocument(company.id, docType, docName, file);
+      if (!project || !file || !docName || !docType) throw new Error("Data tidak lengkap");
+      return uploadProjectDocument(project.projectId, docType, docName, file);
     },
     onSuccess: () => {
-      toast.success("Dokumen berhasil diunggah!");
+      toast.success("Dokumen proyek berhasil diunggah!");
       setUploadOpen(false);
       resetUploadForm();
-      queryClient.invalidateQueries({ queryKey: ["admin", "companies"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "project-documents", project?.projectId] });
     },
-    onError: (err) => toast.error(getErrorMessage(err, "Gagal mengunggah dokumen.")),
+    onError: () => toast.error("Gagal mengunggah dokumen proyek."),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (documentId: string) => deleteCompanyDocument(documentId),
+    mutationFn: (documentId: string) => deleteProjectDocument(documentId),
     onSuccess: () => {
-      toast.success("Dokumen berhasil dihapus!");
+      toast.success("Dokumen proyek berhasil dihapus!");
       setDeleteTarget(null);
-      queryClient.invalidateQueries({ queryKey: ["admin", "companies"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "project-documents", project?.projectId] });
     },
-    onError: (err) => toast.error(getErrorMessage(err, "Gagal menghapus dokumen.")),
+    onError: () => toast.error("Gagal menghapus dokumen proyek."),
   });
 
   const resetUploadForm = () => {
@@ -119,22 +115,30 @@ export function LegalDocumentsPanel({
     setFile(null);
   };
 
-  const handleDownload = async (doc: CompanyDocument) => {
-    setIsDownloading(doc.id);
+  const handleDownload = async (docId: string, docNameFallback: string) => {
+    setIsDownloading(docId);
     try {
-      const url = await downloadCompanyDocument(doc.id);
+      const url = await downloadProjectDocument(docId);
       if (!url) throw new Error("URL unduhan tidak valid");
 
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = doc.nama || "dokumen_legalitas";
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("CORS terblokir");
+        
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = docNameFallback || "dokumen_proyek";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(blobUrl);
+      } catch (fetchError) {
+        window.open(url, "_blank", "noopener,noreferrer");
+      }
     } catch (error) {
-      toast.error(getErrorMessage(error, "Gagal mengunduh dokumen."));
+      toast.error("Gagal mengunduh dokumen.");
     } finally {
       setIsDownloading(null);
     }
@@ -144,24 +148,21 @@ export function LegalDocumentsPanel({
     <div className="rounded-2xl border border-border bg-background shadow-card">
       <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-base font-semibold text-foreground">Dokumen Legalitas</h2>
+          <h2 className="text-base font-semibold text-foreground">Dokumen Proyek</h2>
           <p className="text-xs text-muted-foreground">
-            Daftar dokumen legal per perusahaan yang telah diunggah.
+            Kelola berkas proposal, laporan keuangan, dan MOU terkait proyek.
           </p>
         </div>
         
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-          <Select value={company?.id ?? ""} onValueChange={onSelectedIdChange}>
+          <Select value={project?.projectId ?? ""} onValueChange={onSelectedIdChange}>
             <SelectTrigger className="h-9 w-full sm:w-72">
-              <SelectValue placeholder="Pilih perusahaan" />
+              <SelectValue placeholder="Pilih proyek" />
             </SelectTrigger>
             <SelectContent>
-              {companies.map((c, index) => (
-                <SelectItem
-                  key={c.id || `company-fallback-${index}`}
-                  value={c.id || `val-${index}`}
-                >
-                  {c.nama || "Perusahaan Tanpa Nama"}
+              {projects.map((p) => (
+                <SelectItem key={p.projectId} value={p.projectId}>
+                  {p.projectKey} - {p.companyName || "Tanpa Nama Perusahaan"}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -171,7 +172,7 @@ export function LegalDocumentsPanel({
             variant="primary"
             size="sm"
             className="h-9 shrink-0"
-            disabled={!company}
+            disabled={!project}
             onClick={() => setUploadOpen(true)}
           >
             <Plus className="mr-1.5 h-4 w-4" />
@@ -188,49 +189,49 @@ export function LegalDocumentsPanel({
               <TableHead>Tipe</TableHead>
               <TableHead>Ukuran File</TableHead>
               <TableHead>Tanggal Diunggah</TableHead>
-              <TableHead>Diunggah Oleh</TableHead>
               <TableHead className="w-24 text-right">Aksi</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {!company || company.dokumen.length === 0 ? (
+            {isLoading ? (
+               <TableRow>
+                 <TableCell colSpan={5} className="h-24 text-center text-sm text-muted-foreground">
+                   <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                 </TableCell>
+               </TableRow>
+            ) : !project || documents.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-sm text-muted-foreground">
-                  Belum ada dokumen legalitas.
+                <TableCell colSpan={5} className="h-24 text-center text-sm text-muted-foreground">
+                  Belum ada dokumen proyek.
                 </TableCell>
               </TableRow>
             ) : (
-              company.dokumen.map((doc) => (
-                <TableRow key={doc.id}>
+              documents.map((doc: any) => (
+                <TableRow key={doc.document_id}>
                   <TableCell className="font-medium text-foreground">
                     <div className="flex items-center gap-2">
                       <FileText className="h-4 w-4 text-muted-foreground" />
-                      {doc.nama}
+                      {doc.document_name}
                     </div>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground uppercase">
-                    {doc.tipe.replace(/_/g, " ")}
+                    {doc.document_type.replace(/_/g, " ")}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {formatFileSize(doc.fileSizeBytes)}
+                    {formatFileSize(Number(doc.file_size_bytes))}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {formatDateID(doc.uploadedAt)}
+                    {formatDateID(doc.uploaded_at)}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {doc.uploadedBy || "-"}
-                  </TableCell>
-                  
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
-                        disabled={isDownloading === doc.id}
-                        onClick={() => handleDownload(doc)}
-                        aria-label="Unduh dokumen"
+                        disabled={isDownloading === doc.document_id}
+                        onClick={() => handleDownload(doc.document_id, doc.document_name)}
                       >
-                        {isDownloading === doc.id ? (
+                        {isDownloading === doc.document_id ? (
                           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                         ) : (
                           <Download className="h-4 w-4" />
@@ -241,7 +242,6 @@ export function LegalDocumentsPanel({
                         size="icon"
                         className="text-danger hover:text-danger hover:bg-danger/10"
                         onClick={() => setDeleteTarget(doc)}
-                        aria-label="Hapus dokumen"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -254,7 +254,7 @@ export function LegalDocumentsPanel({
         </Table>
       </div>
 
-      {/* MODAL UPLOAD DOKUMEN */}
+      {/* MODAL UPLOAD */}
       <Dialog
         open={uploadOpen}
         onOpenChange={(open) => {
@@ -266,7 +266,7 @@ export function LegalDocumentsPanel({
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Tambah Dokumen</DialogTitle>
+            <DialogTitle>Unggah Dokumen Proyek</DialogTitle>
             <DialogDescription>
               Format PDF, JPG, atau PNG dengan ukuran maksimal 10 MB.
             </DialogDescription>
@@ -293,7 +293,7 @@ export function LegalDocumentsPanel({
               <Label htmlFor="docName">Nama Dokumen <span className="text-danger">*</span></Label>
               <Input
                 id="docName"
-                placeholder="Contoh: NPWP Perusahaan 2024"
+                placeholder="Contoh: Proposal Proyek A"
                 value={docName}
                 onChange={(e) => setDocName(e.target.value)}
               />
@@ -304,7 +304,7 @@ export function LegalDocumentsPanel({
               <Input
                 id="docFile"
                 type="file"
-                accept= ".pdf, image/jpeg, image/png, image/jpg"
+                accept=".pdf, image/jpeg, image/png, image/jpg"
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                 className="h-11 cursor-pointer pt-2 file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-4 file:py-1 file:text-sm file:font-medium file:text-slate-900 hover:file:bg-slate-200 dark:file:bg-slate-800 dark:file:text-slate-200"
               />
@@ -312,11 +312,7 @@ export function LegalDocumentsPanel({
           </div>
 
           <DialogFooter className="pt-2">
-            <Button
-              variant="outline"
-              onClick={() => setUploadOpen(false)}
-              disabled={uploadMutation.isPending}
-            >
+            <Button variant="outline" onClick={() => setUploadOpen(false)} disabled={uploadMutation.isPending}>
               Batal
             </Button>
             <Button
@@ -334,7 +330,7 @@ export function LegalDocumentsPanel({
         </DialogContent>
       </Dialog>
 
-      {/* MODAL KONFIRMASI HAPUS DOKUMEN */}
+      {/* MODAL KONFIRMASI HAPUS */}
       <Dialog open={deleteTarget !== null} onOpenChange={(open) => !open && !deleteMutation.isPending && setDeleteTarget(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -343,21 +339,17 @@ export function LegalDocumentsPanel({
             </div>
             <DialogTitle>Hapus Dokumen</DialogTitle>
             <DialogDescription>
-              Yakin ingin menghapus dokumen <span className="font-semibold text-foreground">{deleteTarget?.nama}</span>? 
-              Tindakan ini tidak dapat dibatalkan.
+              Yakin ingin menghapus dokumen <span className="font-semibold text-foreground">{deleteTarget?.document_name}</span>? 
+              Tindakan ini permanen.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeleteTarget(null)}
-              disabled={deleteMutation.isPending}
-            >
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleteMutation.isPending}>
               Batal
             </Button>
             <Button
               variant="danger"
-              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.document_id)}
               disabled={deleteMutation.isPending}
             >
               {deleteMutation.isPending ? (

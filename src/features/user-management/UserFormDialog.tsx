@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
-import { toast } from "sonner"; // ✅ Tambahkan ini untuk notif validasi form
+import { toast } from "sonner"; 
 
 import { Button } from "@/shared/components/ui/button";
 import { Checkbox } from "@/shared/components/ui/checkbox";
@@ -40,7 +40,6 @@ const ROLE_LABELS: Record<string, string> = {
   user: "User",
 };
 
-const ROLES_WITHOUT_PERMISSIONS = new Set(["investor", "user"]);
 const ROLES_FULL_LOCKED = new Set(["superadmin"]);
 
 export function UserFormDialog({
@@ -98,20 +97,27 @@ export function UserFormDialog({
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
-    // ✅ FIX 1: Tampilkan notifikasi jika ada input yang kosong, jangan diam saja
     if (!values.firstName || !values.email) {
       toast.warning("Mohon lengkapi Nama Depan dan Email.");
       return;
     }
 
-    onSubmit(values);
+    const payload = { ...values };
+
+    if (mode === "edit" && initialUser) {
+      if (payload.firstName === initialUser.firstName) delete (payload as any).firstName;
+      if (payload.lastName === (initialUser.lastName || "")) delete (payload as any).lastName;
+      if (payload.email === initialUser.email) delete (payload as any).email;
+    }
+
+    onSubmit(payload);
   };
 
   const availableRoles: UserRole[] = currentUserRole === "superadmin"
     ? ["superadmin", "admin", "bod", "investor", "user"]
     : ["admin", "bod", "investor", "user"];
 
-  const showPermissions = !ROLES_WITHOUT_PERMISSIONS.has(values.role);
+  const showPermissions = true;
   const isFullLocked = ROLES_FULL_LOCKED.has(values.role);
 
   const getChecked = (key: string): boolean => {
@@ -123,7 +129,6 @@ export function UserFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
         
-        {/* ✅ FIX 2: Bungkus seluruh modal dengan form, dari Header sampai Footer agar tombol Submit aman */}
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           
           <div className="px-6 pt-6 pb-4 border-b border-border shrink-0">
