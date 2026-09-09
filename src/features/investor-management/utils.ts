@@ -1,13 +1,5 @@
 import type { InvestorStatus } from "./types";
 
-export function formatIDR(value: number): string {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
 export const statusLabel: Record<InvestorStatus, string> = {
   active: "Aktif",
   inactive: "Non-aktif",

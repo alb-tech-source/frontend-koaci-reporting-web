@@ -1,4 +1,3 @@
-// src/shared/lib/axios.ts
 import axios from "axios";
 import { useAuthStore } from "../store/authStore";
 
@@ -6,14 +5,6 @@ const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
   timeout: 10000,
   withCredentials: true,
-});
-
-api.interceptors.request.use((config) => {
-  if (typeof window !== "undefined") {
-    const token = localStorage.getItem("access_token");
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
 });
 
 let isRefreshing = false;
@@ -37,11 +28,10 @@ api.interceptors.response.use(
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
-          .then((token) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
+          .then(() => {
             return api(originalRequest);
           })
-          .catch((err) => Promise.reject(err));
+          .catch((err) => { throw err; });
       }
 
       originalRequest._retry = true;
@@ -59,15 +49,14 @@ api.interceptors.response.use(
         processQueue(refreshError, null);
         if (typeof window !== "undefined") {
           useAuthStore.getState().clearAuth();
-          localStorage.removeItem("access_token");
           window.location.href = "/";
         }
-        return Promise.reject(refreshError);
+        throw refreshError;
       } finally {
         isRefreshing = false;
       }
     }
-    return Promise.reject(error);
+    throw error;
   }
 );
 

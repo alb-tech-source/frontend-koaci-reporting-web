@@ -2,19 +2,11 @@ import api from "@/shared/lib/axios";
 import type { ApiCompany, Company, NewCompanyInput } from "./types";
 import { mapApiCompany } from "./types";
 
-export async function fetchCompanies(page = 1, limit = 10): Promise<{
-  items: Company[];
-  total: number;
-  totalPages: number;
-}> {
-  const { data } = await api.get("/companies", { params: { page, limit } });
-  const list: ApiCompany[] = data?.data ?? [];
-  const meta = data?.meta ?? { total: list.length, totalPages: 1 };
-  return {
-    items: list.map(mapApiCompany),
-    total: meta.total,
-    totalPages: meta.totalPages,
-  };
+export async function fetchCompanies(): Promise<Company[]> {
+  const { data } = await api.get("/companies", { params: { limit: 100 } });
+  
+  const list: ApiCompany[] = data?.data?.items ?? data?.data ?? data ?? [];
+  return list.map(mapApiCompany);
 }
 
 export async function fetchCompany(companyId: string): Promise<Company> {

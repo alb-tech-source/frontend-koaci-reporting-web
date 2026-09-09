@@ -15,14 +15,13 @@ function toPermissionIds(
     .filter((id): id is string => Boolean(id));
 }
 
-export async function fetchUsers(page: number, limit = 10): Promise<AppUser[]> {
+export async function fetchUsers(): Promise<AppUser[]> {
   try {
-    const { data } = await api.get(`/users?page=${page}&limit=${limit}`);
-    const items: ApiUser[] = data.data?.items ?? data.data ?? [];
+    const { data } = await api.get("/users?limit=100");
+    const items: ApiUser[] = data?.data?.items ?? data?.data ?? data ?? [];
     return items.map(mapApiUserToAppUser);
   } catch (error) {
     console.error("Gagal mengambil data dari GET /users:", error);
-    
     return [];
   }
 }

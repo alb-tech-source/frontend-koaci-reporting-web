@@ -11,12 +11,11 @@ import {
   SheetTitle,
 } from "@/shared/components/ui/sheet";
 import { cn } from "@/shared/lib/utils";
+import { formatDateID, formatIDR } from "@/shared/lib/format";
 
 import type { Project } from "./types";
 import { projectStatusLabel } from "./types";
 import {
-  formatDateID,
-  formatIDR,
   fundingProgress,
   projectStatusBadgeClass,
 } from "./utils";

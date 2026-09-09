@@ -1,9 +1,10 @@
 import { FolderKanban, TrendingUp, Users, Wallet } from "lucide-react";
 
 import { StatCard } from "@/shared/components/ui/stat-card";
+import { formatIDR } from "@/shared/lib/format";
 
 import type { DashboardStats } from "./types";
-import { formatIDR, formatNumber } from "./utils";
+import { formatNumber } from "./utils";
 
 interface StatsGridProps {
   stats: DashboardStats;

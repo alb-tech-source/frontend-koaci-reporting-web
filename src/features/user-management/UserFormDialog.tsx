@@ -274,11 +274,13 @@ export function UserFormDialog({
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Menyimpan...
                   </>
-                ) : mode === "edit" ? (
-                  "Simpan Perubahan"
-                ) : (
-                  "Simpan Pengguna"
-                )}
+                ) : (() => {
+                  if (mode === "edit") {
+                    return "Simpan Perubahan";
+                  }
+
+                  return "Simpan Pengguna";
+                })()}
               </Button>
             </DialogFooter>
           </div>

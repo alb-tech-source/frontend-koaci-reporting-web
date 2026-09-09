@@ -1,208 +1,115 @@
 "use client";
 
-import { queryOptions, useSuspenseQuery, useMutation } from "@tanstack/react-query";
-import { AlertTriangle, Loader2, MoreHorizontal, Plus, Search } from "lucide-react";
-import { Suspense, useMemo, useState } from "react";
+import { queryOptions, useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Plus, Search, MoreHorizontal } from "lucide-react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/shared/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/components/ui/dropdown-menu";
 import { Input } from "@/shared/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/components/ui/select";
-import { Skeleton } from "@/shared/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/shared/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
+import { ClientGuard } from "@/shared/components/ClientGuard";
+import { EmptyStateGeneral, PageSkeleton, DeleteConfirmDialog } from "@/shared/components/ui/feedback";
+import { usePaginatedList } from "@/shared/hooks/use-pagination";
 
 import { CompanyFormDialog } from "@/features/company-management/CompanyFormDialog";
 import { LegalDocumentsPanel } from "@/features/company-management/LegalDocumentsPanel";
 import { fetchCompanies, createCompany, updateCompany, deleteCompany } from "@/features/company-management/api";
-import type {
-  Company,
-  NewCompanyInput,
-  CompanyStatus,
-} from "@/features/company-management/types";
-
-function getStatusLabel(status: CompanyStatus) {
-  switch (status) {
-    case "active":
-      return "Valid / Aktif";
-    case "inactive":
-      return "Tidak Aktif";
-    case "blacklist":
-      return "Blacklist";
-    default:
-      return status;
-  }
-}
-
-function getStatusBadgeVariant(status: CompanyStatus) {
-  switch (status) {
-    case "active":
-      return "success";
-    case "inactive":
-      return "outline";
-    case "blacklist":
-      return "danger";
-    default:
-      return "outline";
-  }
-}
+import type { Company, NewCompanyInput, CompanyStatus } from "@/features/company-management/types";
+import { getCompanyStatusLabel, getCompanyStatusBadgeVariant } from "@/features/company-management/utils";
 
 const companiesQuery = queryOptions({
   queryKey: ["admin", "companies"],
-  queryFn: () => fetchCompanies(1, 100),
-  refetchInterval: 5000,
+  queryFn: () => fetchCompanies(),
 });
-
-export default function AdminPerusahaanRoute() {
-  return (
-    <Suspense fallback={<PageSkeleton />}>
-      <CompanyManagementPage />
-    </Suspense>
-  );
-}
 
 const PAGE_SIZE = 5;
 
+export default function AdminPerusahaanRoute() {
+  return (
+    <ClientGuard requirePermission="companies:read" fallback={<PageSkeleton />}>
+      <CompanyManagementPage />
+    </ClientGuard>
+  );
+}
+
 function CompanyManagementPage() {
-  const { data: raw } = useSuspenseQuery(companiesQuery);
-  const [companies, setCompanies] = useState<Company[]>(raw.items);
+  const queryClient = useQueryClient();
+  const { data: companies } = useSuspenseQuery(companiesQuery);
+  
+  // State Dasar
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<CompanyStatus | "all">("all");
-  const [page, setPage] = useState(1);
   const [activeTab, setActiveTab] = useState<string>("perusahaan");
 
   const [open, setOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
   const [editingTarget, setEditingTarget] = useState<Company | null>(null);
   
-  const [selectedDocCompanyId, setSelectedDocCompanyId] = useState<string>(
-    raw.items[0]?.id ?? "",
-  );
-  
+  const [selectedDocCompanyId, setSelectedDocCompanyId] = useState<string>(companies[0]?.id ?? "");
   const [deleteTarget, setDeleteTarget] = useState<Company | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return companies.filter((c) => {
-      const matchQ =
-        !q ||
-        c.nama.toLowerCase().includes(q) ||
-        c.sektor.toLowerCase().includes(q);
+      const matchQ = !q || c.nama.toLowerCase().includes(q) || c.sektor.toLowerCase().includes(q);
       const matchStatus = statusFilter === "all" || c.status === statusFilter;
       return matchQ && matchStatus;
     });
   }, [companies, search, statusFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const pageItems = filtered.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE,
-  );
+  const { setPage, pageItems, totalPages, currentPage } = usePaginatedList(filtered, PAGE_SIZE);
 
+  // --- MUTATIONS ---
   const createMutation = useMutation({
     mutationFn: (payload: NewCompanyInput) => createCompany(payload),
-    onSuccess: (created) => {
-      setCompanies((prev) => [created, ...prev]);
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "companies"] });
       toast.success("Perusahaan berhasil ditambahkan!");
       setOpen(false);
     },
-    onError: (err: any) => {
-      const errorMessage =
-        err?.response?.data?.message || "Gagal menambahkan perusahaan.";
-      toast.error(errorMessage);
-    },
+    onError: (err: any) => toast.error(err?.response?.data?.message || "Gagal menambahkan perusahaan."),
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Partial<NewCompanyInput> }) =>
-      updateCompany(id, payload),
-    onSuccess: (updated) => {
-      setCompanies((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<NewCompanyInput> }) => updateCompany(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "companies"] });
       toast.success("Perusahaan berhasil diperbarui!");
       setOpen(false);
       setEditingTarget(null);
     },
-    onError: (err: any) => {
-      const errorMessage =
-        err?.response?.data?.message || "Gagal memperbarui perusahaan.";
-      toast.error(errorMessage);
-    },
+    onError: (err: any) => toast.error(err?.response?.data?.message || "Gagal memperbarui perusahaan."),
   });
 
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    setIsDeleting(true);
-    try {
-      await deleteCompany(deleteTarget.id);
-      setCompanies((prev) => prev.filter((c) => c.id !== deleteTarget.id));
-      toast.success(`Perusahaan ${deleteTarget.nama} berhasil dihapus.`);
-    } catch {
-      toast.error("Gagal menghapus perusahaan.");
-    } finally {
-      setIsDeleting(false);
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteCompany(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "companies"] });
+      toast.success("Perusahaan berhasil dihapus.");
       setDeleteTarget(null);
-    }
-  };
+    },
+    onError: () => toast.error("Gagal menghapus perusahaan.")
+  });
 
   const handleSubmitForm = (input: NewCompanyInput) => {
-    if (formMode === "edit" && editingTarget) {
-      updateMutation.mutate({ id: editingTarget.id, payload: input });
-    } else {
-      createMutation.mutate(input);
-    }
+    if (formMode === "edit" && editingTarget) updateMutation.mutate({ id: editingTarget.id, payload: input });
+    else createMutation.mutate(input);
   };
 
   return (
     <div className="space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Manajemen Perusahaan
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Kelola profil dan dokumen legalitas perusahaan mitra.
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Manajemen Perusahaan</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Kelola profil dan dokumen legalitas perusahaan mitra.</p>
         </div>
-        <Button
-          variant="primary"
-          onClick={() => {
-            setFormMode("create");
-            setEditingTarget(null);
-            setOpen(true);
-          }}
-        >
-          <Plus className="h-4 w-4" />
-          Tambah Perusahaan
+        <Button variant="primary" onClick={() => { setFormMode("create"); setEditingTarget(null); setOpen(true); }}>
+          <Plus className="h-4 w-4" /> Tambah Perusahaan
         </Button>
       </header>
 
@@ -216,28 +123,10 @@ function CompanyManagementPage() {
           <div className="rounded-2xl border border-border bg-background shadow-card">
             <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="relative w-full sm:max-w-sm">
-                <Search
-                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                  aria-hidden="true"
-                />
-                <Input
-                  type="search"
-                  placeholder="Cari nama atau sektor…"
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    setPage(1);
-                  }}
-                  className="h-9 pl-9"
-                />
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input type="search" placeholder="Cari nama atau sektor…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="h-9 pl-9" />
               </div>
-              <Select
-                value={statusFilter}
-                onValueChange={(v) => {
-                  setStatusFilter(v as CompanyStatus | "all");
-                  setPage(1);
-                }}
-              >
+              <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as CompanyStatus | "all"); setPage(1); }}>
                 <SelectTrigger className="h-9 w-full sm:w-52">
                   <SelectValue placeholder="Semua Status" />
                 </SelectTrigger>
@@ -264,67 +153,35 @@ function CompanyManagementPage() {
                 <TableBody>
                   {pageItems.length === 0 ? (
                     <TableRow>
-                      <TableCell
-                        colSpan={5}
-                        className="h-24 text-center text-sm text-muted-foreground"
-                      >
-                        Tidak ada perusahaan yang cocok.
+                      <TableCell colSpan={5} className="h-64">
+                        <EmptyStateGeneral 
+                          title="Belum ada perusahaan" 
+                          description="Tidak ada data yang cocok dengan pencarian Anda." 
+                        />
                       </TableCell>
                     </TableRow>
                   ) : (
-                    pageItems.map((cmp, index) => (
-                      <TableRow key={cmp.id || `row-fallback-${index}`}>
+                    pageItems.map((cmp) => (
+                      <TableRow key={cmp.id}>
+                        <TableCell><div className="font-medium text-foreground">{cmp.nama || "-"}</div></TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{cmp.jenis}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{cmp.sektor}</TableCell>
                         <TableCell>
-                          <div className="font-medium text-foreground">
-                            {cmp.nama || "Perusahaan Tanpa Nama"}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {cmp.jenis}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {cmp.sektor}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={getStatusBadgeVariant(cmp.status) as any}>
-                            {getStatusLabel(cmp.status)}
-                          </Badge>
+                          <Badge variant={getCompanyStatusBadgeVariant(cmp.status) as any}>{getCompanyStatusLabel(cmp.status)}</Badge>
                         </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                aria-label="Aksi perusahaan"
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
+                              <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onSelect={() => {
-                                  setSelectedDocCompanyId(cmp.id);
-                                  setActiveTab("dokumen");
-                                }}
-                              >
+                              <DropdownMenuItem onSelect={() => { setSelectedDocCompanyId(cmp.id); setActiveTab("dokumen"); }}>
                                 Lihat dokumen
                               </DropdownMenuItem>
-
-                              <DropdownMenuItem
-                                onSelect={() => {
-                                  setEditingTarget(cmp);
-                                  setFormMode("edit");
-                                  setOpen(true);
-                                }}
-                              >
+                              <DropdownMenuItem onSelect={() => { setEditingTarget(cmp); setFormMode("edit"); setOpen(true); }}>
                                 Edit
                               </DropdownMenuItem>
-
-                              <DropdownMenuItem
-                                className="text-danger focus:text-danger"
-                                onSelect={() => setDeleteTarget(cmp)}
-                              >
+                              <DropdownMenuItem className="text-danger focus:text-danger" onSelect={() => setDeleteTarget(cmp)}>
                                 Hapus
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -337,112 +194,38 @@ function CompanyManagementPage() {
               </Table>
             </div>
 
-            <div className="flex flex-col gap-3 border-t border-border p-4 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-muted-foreground">
-                Menampilkan{" "}
-                <span className="font-medium text-foreground">
-                  {pageItems.length}
-                </span>{" "}
-                dari{" "}
-                <span className="font-medium text-foreground">
-                  {filtered.length}
-                </span>{" "}
-                perusahaan
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={currentPage <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                >
-                  Sebelumnya
-                </Button>
-                <span className="text-xs text-muted-foreground">
-                  Hal. {currentPage} / {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={currentPage >= totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                >
-                  Berikutnya
-                </Button>
+            {pageItems.length > 0 && (
+              <div className="flex flex-col gap-3 border-t border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs text-muted-foreground">
+                  Menampilkan <span className="font-medium text-foreground">{pageItems.length}</span> dari <span className="font-medium text-foreground">{filtered.length}</span> perusahaan
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Sebelumnya</Button>
+                  <span className="text-xs text-muted-foreground">Hal. {currentPage} / {totalPages}</span>
+                  <Button variant="outline" size="sm" disabled={currentPage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Berikutnya</Button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </TabsContent>
 
         <TabsContent value="dokumen" className="space-y-0">
-          <LegalDocumentsPanel
-            companies={companies}
-            selectedId={selectedDocCompanyId}
-            onSelectedIdChange={setSelectedDocCompanyId}
-          />
+          <LegalDocumentsPanel companies={companies} selectedId={selectedDocCompanyId} onSelectedIdChange={setSelectedDocCompanyId} />
         </TabsContent>
       </Tabs>
 
-      <CompanyFormDialog
-        open={open}
-        onOpenChange={(isOpen) => {
-          setOpen(isOpen);
-          if (!isOpen) setEditingTarget(null);
-        }}
-        mode={formMode}
-        initialData={editingTarget}
-        onSubmit={handleSubmitForm}
-        isSubmitting={createMutation.isPending || updateMutation.isPending}
-      />
+      <CompanyFormDialog open={open} onOpenChange={(isOpen) => { setOpen(isOpen); if (!isOpen) setEditingTarget(null); }} mode={formMode} initialData={editingTarget} onSubmit={handleSubmitForm} isSubmitting={createMutation.isPending || updateMutation.isPending} />
 
-      <Dialog
+      <DeleteConfirmDialog 
         open={deleteTarget !== null}
-        onOpenChange={(isOpen) => !isOpen && !isDeleting && setDeleteTarget(null)}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <div className="mb-2 grid h-10 w-10 place-items-center rounded-full bg-danger/10">
-              <AlertTriangle className="h-5 w-5 text-danger" />
-            </div>
-            <DialogTitle>Hapus Perusahaan</DialogTitle>
-            <DialogDescription>
-              Yakin ingin menghapus profil perusahaan{" "}
-              <span className="font-semibold text-foreground">
-                {deleteTarget?.nama}
-              </span>
-              ? Tindakan ini permanen dan akan menghapus semua dokumen yang terkait.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeleteTarget(null)}
-              disabled={isDeleting}
-            >
-              Batal
-            </Button>
-            <Button variant="danger" onClick={handleDelete} disabled={isDeleting}>
-              {isDeleting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Menghapus...
-                </>
-              ) : (
-                "Ya, Hapus"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-function PageSkeleton() {
-  return (
-    <div className="space-y-4">
-      <Skeleton className="h-8 w-64" />
-      <Skeleton className="h-[420px] w-full rounded-2xl" />
+        onOpenChange={(isOpen) => !isOpen && setDeleteTarget(null)}
+        title="Hapus Perusahaan"
+        description={
+          <>Yakin ingin menghapus profil perusahaan <span className="font-semibold text-foreground">{deleteTarget?.nama}</span>? Tindakan ini permanen.</>
+        }
+        onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+        isPending={deleteMutation.isPending}
+      />
     </div>
   );
 }

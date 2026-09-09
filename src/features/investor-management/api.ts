@@ -3,70 +3,44 @@ import api from "@/shared/lib/axios";
 
 export async function fetchLinkableUsers(): Promise<LinkableUser[]> {
   try {
-    let allUsers: any[] = [];
-    let existingInvestors: any[] = [];
+    const [usersRes, investorsRes] = await Promise.allSettled([
+      api.get("/users?page=1&limit=100"),
+      api.get("/investors?page=1&limit=100")
+    ]);
 
-    try {
-      const usersRes = await api.get("/users?page=1&limit=100");
-      allUsers =
-        usersRes.data?.data?.items ??
-        usersRes.data?.data ??
-        usersRes.data ??
-        [];
-    } catch (usersErr) {
-      console.error("Gagal mengambil data dari /users:", usersErr);
-    }
+    const allUsers = usersRes.status === "fulfilled"
+      ? (usersRes.value.data?.data?.items ?? usersRes.value.data?.data ?? usersRes.value.data ?? [])
+      : [];
 
-    try {
-      const investorsRes = await api.get("/investors?page=1&limit=100");
-      existingInvestors =
-        investorsRes.data?.data?.items ??
-        investorsRes.data?.data ??
-        investorsRes.data ??
-        [];
-    } catch (investorsErr) {
-      console.error("Gagal mengambil data dari /investors:", investorsErr);
-    }
+    const existingInvestors = investorsRes.status === "fulfilled"
+      ? (investorsRes.value.data?.data?.items ?? investorsRes.value.data?.data ?? investorsRes.value.data ?? [])
+      : [];
 
-    const linkedUserIds = new Set(
-      existingInvestors.map((inv: any) => inv.user_id),
-    );
+    const linkedUserIds = new Set(existingInvestors.map((inv: any) => inv.user_id || inv.userId || inv.id));
 
-    const linkableUsers: LinkableUser[] = allUsers
+    return allUsers
       .filter((u: any) => {
-        const isNotLinked = !linkedUserIds.has(u.user_id || u.id);
-        const roleName = (
-          u.role?.role_name ||
-          u.role_name ||
-          u.role ||
-          ""
-        ).toLowerCase();
-
-        const isEligibleRole = roleName === "user" || roleName === "investor";
-        return isNotLinked && isEligibleRole;
+        const userId = u.user_id || u.id;
+        const isNotLinked = !linkedUserIds.has(userId);
+        const roleName = (u.role?.role_name || u.role_name || u.role || "").toLowerCase();
+        
+        // Hanya user biasa dan investor yang belum tertaut yang boleh muncul di dropdown
+        return isNotLinked && (roleName === "user" || roleName === "investor");
       })
       .map((u: any) => ({
         id: u.user_id || u.id,
         name: `${u.firstname || ""} ${u.lastname || ""}`.trim(),
         email: u.email,
       }));
-
-    return linkableUsers;
   } catch (error) {
     console.error("Gagal memproses logika filter user linkable:", error);
     return [];
   }
 }
 
-export async function fetchInvestors(
-  page = 1,
-  search = "",
-  status = "all",
-): Promise<Investor[]> {
+export async function fetchInvestors(): Promise<Investor[]> {
   try {
-    const params: any = { page, limit: 100 };
-    if (search) params.search = search;
-    if (status !== "all") params.status = status;
+    const params: any = { page: 1, limit: 100 }; 
 
     const { data } = await api.get("/investors", { params });
     const investorList = data?.data?.items ?? data?.data ?? data ?? [];
@@ -105,7 +79,6 @@ export async function fetchInvestors(
     });
   } catch (error) {
     console.error("Gagal mengambil data dari GET /investors:", error);
-
     throw error; 
   }
 }

@@ -1,7 +1,5 @@
 import api from "@/shared/lib/axios"; // Pastikan path ini sesuai dengan instance axios Anda
 import { 
-  type ProjectListParams, 
-  type ProjectListResponse, 
   type Project, 
   type ProjectFormValues, 
   type CompanyOption,
@@ -9,14 +7,12 @@ import {
   mapToApiProjectPayload
 } from "./types";
 
-export async function fetchProjects(params: ProjectListParams = {}): Promise<ProjectListResponse> {
-  const { data } = await api.get("/projects", { params });
-  return {
-    data: {
-      items: (data?.data ?? []).map(mapApiProject),
-      meta: data?.meta ?? { total: 0, page: 1, limit: 10, totalPages: 0 }
-    }
-  };
+export async function fetchProjects(): Promise<Project[]> {
+  const { data } = await api.get("/projects", { params: { limit: 100 } });
+  
+  const items = data?.data?.items ?? data?.data ?? data ?? [];
+  
+  return items.map(mapApiProject);
 }
 
 export async function fetchProject(projectId: string): Promise<Project> {

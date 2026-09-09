@@ -1,39 +1,46 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 import { hasPermission, getCurrentRole } from "@/shared/lib/auth";
+import { AccessDenied, PageSkeleton } from "@/shared/components/ui/feedback";
+
+interface ClientGuardProps {
+  children: ReactNode;
+  requirePermission?: string;
+  requireRole?: string | string[];
+  fallback?: ReactNode;
+}
 
 export function ClientGuard({ 
   children, 
-  requiredPermission,
-  requiredRole 
-}: Readonly<{ 
-  children: React.ReactNode; 
-  requiredPermission?: string;
-  requiredRole?: string;
-}>) {
+  requirePermission, 
+  requireRole, 
+  fallback 
+}: Readonly<ClientGuardProps>) {
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => setMounted(true), []);
 
-  if (!mounted) return null;
+  if (!mounted) return <>{fallback || <PageSkeleton />}</>;
 
-  const isRoleValid = requiredRole ? getCurrentRole() === requiredRole : true;
-  const isPermValid = requiredPermission ? hasPermission(requiredPermission) : true;
+  const role = getCurrentRole();
+  let allowed = true;
 
-  if (!isRoleValid || !isPermValid) {
-    return (
-      <div className="flex h-[60vh] flex-col items-center justify-center text-center">
-        <div className="mb-4 grid h-12 w-12 place-items-center rounded-full bg-danger/10 text-danger">
-          <AlertTriangle className="h-6 w-6" />
-        </div>
-        <h2 className="text-lg font-semibold text-foreground">Akses Ditolak</h2>
-        <p className="text-sm text-muted-foreground">Anda tidak memiliki izin untuk mengakses halaman ini.</p>
-      </div>
-    );
+  if (requireRole) {
+    if (Array.isArray(requireRole)) {
+      allowed = requireRole.includes(role || "");
+    } else {
+      allowed = role === requireRole;
+    }
+  }
+
+  // Cek Permission jika Role lolos
+  if (allowed && requirePermission) {
+    allowed = hasPermission(requirePermission);
+  }
+
+  if (!allowed) {
+    return <AccessDenied />;
   }
 
   return <>{children}</>;

@@ -1,120 +1,40 @@
 "use client";
 
-import {
-  queryOptions,
-  useSuspenseQuery,
-  useQueryClient,
-  useMutation,
-  useQuery, 
-} from "@tanstack/react-query";
-import {
-  AlertTriangle,
-  Pencil,
-  Plus,
-  Power,
-  Search,
-  Trash2,
-  UserPlus,
-  Users as UsersIcon,
-  Loader2,
-  ShieldCheck,
-} from "lucide-react";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { queryOptions, useSuspenseQuery, useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
+import { Pencil, Plus, Power, Search, UserPlus, Users as UsersIcon, ShieldCheck, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/shared/lib/axios";
 
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/components/ui/select";
-import { Skeleton } from "@/shared/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/shared/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table";
 import { cn } from "@/shared/lib/utils";
+
+import { ClientGuard } from "@/shared/components/ClientGuard";
+import { EmptyStateGeneral, PageSkeleton, DeleteConfirmDialog } from "@/shared/components/ui/feedback";
+import { usePaginatedList } from "@/shared/hooks/use-pagination";
 
 import { UserFormDialog } from "@/features/user-management/UserFormDialog";
 import { NewUserSuccessDialog } from "@/features/user-management/NewUserSuccessDialog";
-
-import {
-  fetchUsers,
-  createUser,
-  updateUser,
-  toggleUserActivation,
-  deleteUser,
-  fetchPermissions,
-} from "@/features/user-management/api";
-
-import type {
-  AppUser,
-  UserFormValues,
-  UserRole,
-  UserStatus,
-} from "@/features/user-management/types";
-import {
-  formatRelativeTime,
-  roleBadgeClass,
-  roleLabel,
-  statusLabel,
-} from "@/features/user-management/utils";
+import { fetchUsers, createUser, updateUser, toggleUserActivation, deleteUser, fetchPermissions } from "@/features/user-management/api";
+import type { AppUser, UserFormValues, UserRole, UserStatus } from "@/features/user-management/types";
+import { roleBadgeClass, roleLabel, statusLabel } from "@/features/user-management/utils";
+import { formatRelativeTime } from "@/shared/lib/format";
 import { hasPermission, getCurrentRole } from "@/shared/lib/auth";
 
 const usersQuery = queryOptions<AppUser[]>({
   queryKey: ["admin", "users"],
-  queryFn: () => fetchUsers(1),
+  queryFn: () => fetchUsers(),
 });
 
 export default function AdminPenggunaPage() {
-  const [mounted, setMounted] = useState(false);
-  const role = getCurrentRole();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return <PageSkeleton />;
-  }
-
-  const hasAccess = hasPermission("users:read");
-
-  if (!hasAccess) {
-    return (
-      <div className="flex h-[60vh] flex-col items-center justify-center text-center">
-        <div className="mb-4 grid h-12 w-12 place-items-center rounded-full bg-danger/10 text-danger">
-          <AlertTriangle className="h-6 w-6" />
-        </div>
-        <h2 className="text-lg font-semibold text-foreground">Akses Ditolak</h2>
-        <p className="text-sm text-muted-foreground">
-          Anda tidak memiliki izin untuk mengakses halaman ini.
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <Suspense fallback={<PageSkeleton />}>
+    <ClientGuard requirePermission="users:read" fallback={<PageSkeleton />}>
       <UsersPageContent />
-    </Suspense>
+    </ClientGuard>
   );
 }
 
@@ -138,32 +58,36 @@ function UsersPageContent() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const canDeleteUser = (target: AppUser): boolean => {
-    return canDelete && target.role !== "bod";
-  };
+  const canDeleteUser = (target: AppUser): boolean => canDelete && target.role !== "bod";
 
   const canActOnTarget = (target: AppUser): boolean => {
-    if (target.role === "bod" || target.role === "superadmin") {
-      return currentRole === "bod";
-    }
+    if (target.role === "bod" || target.role === "superadmin") return currentRole === "bod";
     return true;
   };
 
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
   const [statusFilter, setStatusFilter] = useState<UserStatus | "all">("all");
-  const [page, setPage] = useState(1);
 
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
   const [editing, setEditing] = useState<AppUser | null>(null);
 
   const [deleteTarget, setDeleteTarget] = useState<AppUser | null>(null);
-  const [createdUser, setCreatedUser] = useState<{
-    fullName: string;
-    email: string;
-    password: string;
-  } | null>(null);
+  const [createdUser, setCreatedUser] = useState<{ fullName: string; email: string; password: string } | null>(null);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return users.filter((u) => {
+      const name = `${u.firstName} ${u.lastName}`.toLowerCase();
+      const matchQ = !q || name.includes(q) || u.email.toLowerCase().includes(q);
+      const matchRole = roleFilter === "all" || u.role === roleFilter;
+      const matchStatus = statusFilter === "all" || u.status === statusFilter;
+      return matchQ && matchRole && matchStatus;
+    });
+  }, [users, search, roleFilter, statusFilter]);
+
+  const { setPage, pageItems, totalPages, currentPage, start } = usePaginatedList(filtered, PAGE_SIZE);
 
   const createMutation = useMutation({
     mutationFn: async (values: UserFormValues) => {
@@ -185,7 +109,6 @@ function UsersPageContent() {
       setPage(1);
 
       const tempPassword = response?.data?.temporaryPassword || "Gagal mendapatkan password";
-
       setCreatedUser({
         fullName: `${variables.firstName} ${variables.lastName}`.trim(),
         email: variables.email,
@@ -193,9 +116,7 @@ function UsersPageContent() {
       });
       toast.success("Pengguna baru berhasil ditambahkan."); 
     },
-    onError: (error) => {
-      toast.error(getErrorMessage(error, "Gagal menambahkan pengguna.")); 
-    }
+    onError: (error) => toast.error(getErrorMessage(error, "Gagal menambahkan pengguna."))
   });
 
   const updateMutation = useMutation({
@@ -219,21 +140,16 @@ function UsersPageContent() {
       setEditing(null);
       toast.success("Data pengguna berhasil diperbarui."); 
     },
-    onError: (error) => {
-      toast.error(getErrorMessage(error, "Gagal memperbarui pengguna.")); 
-    }
+    onError: (error) => toast.error(getErrorMessage(error, "Gagal memperbarui pengguna."))
   });
 
   const toggleMutation = useMutation({
-    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
-      toggleUserActivation(id, isActive),
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => toggleUserActivation(id, isActive),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
       toast.success("Status pengguna berhasil diubah.");
     },
-    onError: (error) => {
-      toast.error(getErrorMessage(error, "Gagal mengubah status pengguna."));
-    },
+    onError: (error) => toast.error(getErrorMessage(error, "Gagal mengubah status pengguna.")),
   });
 
   const deleteMutation = useMutation({
@@ -243,26 +159,8 @@ function UsersPageContent() {
       setDeleteTarget(null);
       toast.success("Pengguna berhasil dihapus.");
     },
-    onError: (error) => {
-      toast.error(getErrorMessage(error, "Gagal menghapus pengguna."));
-    },
+    onError: (error) => toast.error(getErrorMessage(error, "Gagal menghapus pengguna.")),
   });
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return users.filter((u) => {
-      const name = `${u.firstName} ${u.lastName}`.toLowerCase();
-      const matchQ = !q || name.includes(q) || u.email.toLowerCase().includes(q);
-      const matchRole = roleFilter === "all" || u.role === roleFilter;
-      const matchStatus = statusFilter === "all" || u.status === statusFilter;
-      return matchQ && matchRole && matchStatus;
-    });
-  }, [users, search, roleFilter, statusFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const start = (currentPage - 1) * PAGE_SIZE;
-  const pageItems = filtered.slice(start, start + PAGE_SIZE);
 
   const openCreate = () => {
     setFormMode("create");
@@ -277,11 +175,8 @@ function UsersPageContent() {
   };
 
   const handleSubmit = (values: UserFormValues) => {
-    if (formMode === "edit" && editing) {
-      updateMutation.mutate({ id: editing.id, values });
-    } else {
-      createMutation.mutate(values);
-    }
+    if (formMode === "edit" && editing) updateMutation.mutate({ id: editing.id, values });
+    else createMutation.mutate(values);
   };
 
   const confirmDelete = () => {
@@ -296,17 +191,12 @@ function UsersPageContent() {
     <div className="space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Pengguna
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Kelola akun pengguna sistem.
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Pengguna</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Kelola akun pengguna sistem.</p>
         </div>
         {canCreate && (
           <Button variant="primary" onClick={openCreate}>
-            <Plus className="h-4 w-4" />
-            Tambah User
+            <Plus className="h-4 w-4" /> Tambah User
           </Button>
         )}
       </header>
@@ -314,32 +204,12 @@ function UsersPageContent() {
       <div className="rounded-2xl border border-border bg-background shadow-card">
         <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative w-full sm:max-w-sm">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <Input
-              type="search"
-              placeholder="Cari nama atau email…"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              className="h-9 pl-9"
-            />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <Input type="search" placeholder="Cari nama atau email…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="h-9 pl-9" />
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Select
-              value={roleFilter}
-              onValueChange={(v) => {
-                setRoleFilter(v as UserRole | "all");
-                setPage(1);
-              }}
-            >
-              <SelectTrigger className="h-9 w-full sm:w-40">
-                <SelectValue placeholder="Semua Role" />
-              </SelectTrigger>
+            <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v as UserRole | "all"); setPage(1); }}>
+              <SelectTrigger className="h-9 w-full sm:w-40"><SelectValue placeholder="Semua Role" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Semua Role</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
@@ -349,16 +219,8 @@ function UsersPageContent() {
                 <SelectItem value="user">User</SelectItem>
               </SelectContent>
             </Select>
-            <Select
-              value={statusFilter}
-              onValueChange={(v) => {
-                setStatusFilter(v as UserStatus | "all");
-                setPage(1);
-              }}
-            >
-              <SelectTrigger className="h-9 w-full sm:w-40">
-                <SelectValue placeholder="Semua Status" />
-              </SelectTrigger>
+            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as UserStatus | "all"); setPage(1); }}>
+              <SelectTrigger className="h-9 w-full sm:w-40"><SelectValue placeholder="Semua Status" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Semua Status</SelectItem>
                 <SelectItem value="active">Aktif</SelectItem>
@@ -384,90 +246,44 @@ function UsersPageContent() {
               {isEmpty ? (
                 <TableRow>
                   <TableCell colSpan={6} className="h-64">
-                    <EmptyState onAdd={openCreate} />
+                    <EmptyStateGeneral 
+                      title="Belum ada pengguna" 
+                      description="Tambahkan pengguna pertama untuk mulai mengelola akses sistem."
+                      icon={UsersIcon}
+                      action={canCreate ? <Button variant="primary" size="sm" onClick={openCreate}><UserPlus className="h-4 w-4" /> Tambah User</Button> : undefined}
+                    />
                   </TableCell>
                 </TableRow>
               ) : (
                 pageItems.map((u) => (
                   <TableRow key={u.id}>
-                    <TableCell>
-                      <div className="font-medium text-foreground">
-                        {u.firstName} {u.lastName}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {u.email}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={cn(roleBadgeClass(u.role))}>
-                        {roleLabel[u.role]}
-                      </Badge>
-                    </TableCell>
+                    <TableCell><div className="font-medium text-foreground">{u.firstName} {u.lastName}</div></TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{u.email}</TableCell>
+                    <TableCell><Badge className={cn(roleBadgeClass(u.role))}>{roleLabel[u.role]}</Badge></TableCell>
                     <TableCell>
                       {u.status === "active" ? (
-                        <Badge className="border-transparent bg-success text-white">
-                          {statusLabel.active}
-                        </Badge>
+                        <Badge className="border-transparent bg-success text-white">{statusLabel.active}</Badge>
                       ) : (
-                        <Badge
-                          variant="outline"
-                          className="text-muted-foreground"
-                        >
-                          {statusLabel.inactive}
-                        </Badge>
+                        <Badge variant="outline" className="text-muted-foreground">{statusLabel.inactive}</Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatRelativeTime(u.lastLoginAt)}
-                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{formatRelativeTime(u.lastLoginAt)}</TableCell>
                     {hasActions && (
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           {canUpdate && canActOnTarget(u) && (
                             <>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                aria-label="Edit pengguna"
-                                onClick={() => openEdit(u)}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                aria-label={u.status === "active" ? "Nonaktifkan pengguna" : "Aktifkan pengguna"}
-                                disabled={toggleMutation.isPending && toggleMutation.variables?.id === u.id}
-                                onClick={() => toggleMutation.mutate({ id: u.id, isActive: u.status !== "active" })}
-                              >
-                                {toggleMutation.isPending && toggleMutation.variables?.id === u.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                                ) : (
-                                  <Power className={cn("h-4 w-4", u.status === "active" ? "text-success" : "text-muted-foreground")} />
-                                )}
+                              <Button variant="ghost" size="icon" aria-label="Edit pengguna" onClick={() => openEdit(u)}><Pencil className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" aria-label={u.status === "active" ? "Nonaktifkan pengguna" : "Aktifkan pengguna"} disabled={toggleMutation.isPending && toggleMutation.variables?.id === u.id} onClick={() => toggleMutation.mutate({ id: u.id, isActive: u.status !== "active" })}>
+                                <Power className={cn("h-4 w-4", u.status === "active" ? "text-success" : "text-muted-foreground")} />
                               </Button>
                             </>
                           )}
-
                           {canDelete && canDeleteUser(u) && canActOnTarget(u) && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              aria-label="Hapus pengguna"
-                              onClick={() => setDeleteTarget(u)}
-                            >
-                              <Trash2 className="h-4 w-4 text-danger" />
-                            </Button>
+                            <Button variant="ghost" size="icon" aria-label="Hapus pengguna" onClick={() => setDeleteTarget(u)}><Trash2 className="h-4 w-4 text-danger" /></Button>
                           )}
-                          
                           {!canActOnTarget(u) && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              aria-label="Akun dilindungi"
-                              disabled
-                              title="Hanya BOD yang dapat mengubah akun ini"
-                            >
+                            <Button variant="ghost" size="icon" aria-label="Akun dilindungi" disabled title="Hanya BOD yang dapat mengubah akun ini">
                               <ShieldCheck className="h-4 w-4 text-muted-foreground/40" />
                             </Button>
                           )}
@@ -484,137 +300,31 @@ function UsersPageContent() {
         {!isEmpty && (
           <div className="flex flex-col gap-3 border-t border-border p-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-muted-foreground">
-              Menampilkan{" "}
-              <span className="font-medium text-foreground">
-                {start + 1}-{Math.min(start + PAGE_SIZE, filtered.length)}
-              </span>{" "}
-              dari{" "}
-              <span className="font-medium text-foreground">
-                {filtered.length}
-              </span>{" "}
-              pengguna
+              Menampilkan <span className="font-medium text-foreground">{start + 1}-{Math.min(start + PAGE_SIZE, filtered.length)}</span> dari <span className="font-medium text-foreground">{filtered.length}</span> pengguna
             </p>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={currentPage <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                Sebelumnya
-              </Button>
-              <span className="text-xs text-muted-foreground">
-                Hal. {currentPage} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={currentPage >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              >
-                Berikutnya
-              </Button>
+              <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Sebelumnya</Button>
+              <span className="text-xs text-muted-foreground">Hal. {currentPage} / {totalPages}</span>
+              <Button variant="outline" size="sm" disabled={currentPage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Berikutnya</Button>
             </div>
           </div>
         )}
       </div>
 
-      <UserFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        mode={formMode}
-        initialUser={editing}
-        onSubmit={handleSubmit}
-        currentUserRole={currentRole ?? "admin"}
-        isSubmitting={isFormSubmitting}
-      />
+      <UserFormDialog open={formOpen} onOpenChange={setFormOpen} mode={formMode} initialUser={editing} onSubmit={handleSubmit} currentUserRole={currentRole ?? "admin"} isSubmitting={isFormSubmitting} />
+      <NewUserSuccessDialog open={createdUser !== null} onClose={() => setCreatedUser(null)} fullName={createdUser?.fullName ?? ""} email={createdUser?.email ?? ""} password={createdUser?.password ?? ""} />
 
-      <NewUserSuccessDialog
-        open={createdUser !== null}
-        onClose={() => setCreatedUser(null)}
-        fullName={createdUser?.fullName ?? ""}
-        email={createdUser?.email ?? ""}
-        password={createdUser?.password ?? ""}
-      />
-
-      <Dialog
+      {/* ✅ Menggunakan Global Delete Dialog */}
+      <DeleteConfirmDialog 
         open={deleteTarget !== null}
-        onOpenChange={(o) => !o && !deleteMutation.isPending && setDeleteTarget(null)}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <div className="mb-2 grid h-10 w-10 place-items-center rounded-full bg-danger/10">
-              <AlertTriangle className="h-5 w-5 text-danger" />
-            </div>
-            <DialogTitle>Hapus Pengguna</DialogTitle>
-            <DialogDescription>
-              {deleteTarget ? (
-                <>
-                  Yakin menghapus profil pengguna{" "}
-                  <span className="font-medium text-foreground">
-                    {deleteTarget.firstName} {deleteTarget.lastName}
-                  </span>
-                  ? Tindakan ini permanen dan tidak bisa dibatalkan.
-                </>
-              ) : (
-                "Tindakan ini permanen, tidak bisa dibatalkan."
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeleteTarget(null)}
-              disabled={deleteMutation.isPending}
-            >
-              Batalkan
-            </Button>
-            <Button
-              variant="danger"
-              onClick={confirmDelete}
-              disabled={deleteMutation.isPending}
-            >
-              {deleteMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Menghapus...
-                </>
-              ) : (
-                "Ya, Hapus"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-function EmptyState({ onAdd }: Readonly<{ onAdd: () => void }>) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
-      <div className="grid h-14 w-14 place-items-center rounded-full bg-muted">
-        <UsersIcon className="h-6 w-6 text-muted-foreground" />
-      </div>
-      <div>
-        <p className="font-medium text-foreground">Belum ada pengguna</p>
-        <p className="text-sm text-muted-foreground">
-          Tambahkan pengguna pertama untuk mulai mengelola akses sistem.
-        </p>
-      </div>
-      <Button variant="primary" size="sm" onClick={onAdd}>
-        <UserPlus className="h-4 w-4" />
-        Tambah User
-      </Button>
-    </div>
-  );
-}
-
-function PageSkeleton() {
-  return (
-    <div className="space-y-4">
-      <Skeleton className="h-8 w-64" />
-      <Skeleton className="h-[480px] w-full rounded-2xl" />
+        onOpenChange={(isOpen) => !isOpen && !deleteMutation.isPending && setDeleteTarget(null)}
+        title="Hapus Pengguna"
+        description={
+          <>Yakin menghapus profil pengguna <span className="font-medium text-foreground">{deleteTarget?.firstName} {deleteTarget?.lastName}</span>? Tindakan ini permanen dan tidak bisa dibatalkan.</>
+        }
+        onConfirm={confirmDelete}
+        isPending={deleteMutation.isPending}
+      />
     </div>
   );
 }

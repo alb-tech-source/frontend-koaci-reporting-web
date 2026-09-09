@@ -1,4 +1,4 @@
-import type { ActivityAction } from "./types";
+
 
 export const actionLabel: Record<string, string> = {
   LOGIN_SUCCESS: "Login Berhasil",

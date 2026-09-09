@@ -1,8 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { cn } from "@/shared/lib/utils";
+import { formatRelativeTime } from "@/shared/lib/format";
 
 import type { ActivityItem } from "./types";
-import { activityMeta, formatRelativeTime, toneBg } from "./utils";
+import { activityMeta, toneBg } from "./utils";
 
 interface ActivityFeedProps {
   items: ActivityItem[];

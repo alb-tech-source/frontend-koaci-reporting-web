@@ -41,13 +41,13 @@ import {
 } from "@/shared/components/ui/table";
 
 import type { Company, CompanyDocument } from "./types";
-import { formatDateID } from "./utils";
 import {
   uploadCompanyDocument,
   downloadCompanyDocument,
   deleteCompanyDocument,
 } from "./api";
 import { getErrorMessage } from "@/shared/lib/axios";
+import { formatDateID } from "@/shared/lib/format";
 
 interface LegalDocumentsPanelProps {
   companies: Company[];

@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import { Button } from "@/shared/components/ui/button";
 import { toast } from "sonner";
-import { fetchAllPermissions, fetchRolePermissions, updateRolePermissions } from "@/features/settings/api";
+import { fetchAllPermissions, updateRolePermissions } from "@/features/settings/api";
 import { hasPermission } from "@/shared/lib/auth";
 
 export default function SettingsPage() {

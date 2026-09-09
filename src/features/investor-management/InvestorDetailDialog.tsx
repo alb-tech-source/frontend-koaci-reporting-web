@@ -7,10 +7,11 @@ import {
   DialogTitle,
 } from "@/shared/components/ui/dialog";
 import { Separator } from "@/shared/components/ui/separator";
+import { formatIDR } from "@/shared/lib/format";
 
 import { DocumentListPanel } from "@/features/investor-management/DocumentListPanel";
 import type { Investor } from "./types";
-import { formatIDR, statusBadgeVariant, statusLabel } from "./utils";
+import { statusBadgeVariant, statusLabel } from "./utils";
 
 interface InvestorDetailDialogProps {
   open: boolean;

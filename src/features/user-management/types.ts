@@ -35,11 +35,20 @@ export const PERMISSIONS_FALLBACK = [
   { key: "investors:delete:own", label: "Hapus Profil Sendiri" },
 
   // INVESTOR DOCUMENTS
-  { key: "investor_documents:upload:any", label: "Unggah Dok. Investor (Semua)" },
+  {
+    key: "investor_documents:upload:any",
+    label: "Unggah Dok. Investor (Semua)",
+  },
   { key: "investor_documents:upload:own", label: "Unggah Dokumen Sendiri" },
-  { key: "investor_documents:download:any", label: "Unduh Dok. Investor (Semua)" },
+  {
+    key: "investor_documents:download:any",
+    label: "Unduh Dok. Investor (Semua)",
+  },
   { key: "investor_documents:download:own", label: "Unduh Dokumen Sendiri" },
-  { key: "investor_documents:delete:any", label: "Hapus Dok. Investor (Semua)" },
+  {
+    key: "investor_documents:delete:any",
+    label: "Hapus Dok. Investor (Semua)",
+  },
   { key: "investor_documents:delete:own", label: "Hapus Dokumen Sendiri" },
 
   // USERS & ROLES
@@ -55,8 +64,6 @@ export const PERMISSIONS_FALLBACK = [
   { key: "roles:read:own", label: "Lihat Role Sendiri" },
   { key: "roles:update:any", label: "Edit Role Sistem" },
 ] as const;
-
-export type PermissionKey = string; 
 
 export interface Permission {
   id: string;
@@ -74,10 +81,10 @@ export interface ApiUser {
   last_login_at: string | null;
   role?: {
     role_name: UserRole;
-    rolePermissions?: { permission: { permission_key: PermissionKey } }[];
+    rolePermissions?: { permission: { permission_key: string } }[];
   };
   role_name?: string;
-  permission_ids?: PermissionKey[];
+  permission_ids?: string[];
 }
 
 export interface AppUser {
@@ -87,7 +94,7 @@ export interface AppUser {
   email: string;
   role: UserRole;
   status: UserStatus;
-  permissions: PermissionKey[];
+  permissions: string[];
   lastLoginAt: string | null;
 }
 
@@ -96,7 +103,7 @@ export interface UserFormValues {
   lastName: string;
   email: string;
   role: UserRole;
-  permissions: PermissionKey[];
+  permissions: string[];
   activate: boolean;
 }
 
@@ -112,7 +119,7 @@ export function mapApiUserToAppUser(u: ApiUser): AppUser {
       ? u.role.rolePermissions
           .map((rp) => rp.permission?.permission_key)
           .filter(Boolean)
-      : (u.permission_ids || []),
+      : u.permission_ids || [],
     lastLoginAt: u.last_login_at || null,
   };
 }

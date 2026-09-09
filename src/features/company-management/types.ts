@@ -113,7 +113,7 @@ export function mapApiCompany(c: ApiCompany): Company {
       tipe: d.document_type || "-",
       nama: d.document_name || "-",
       provider: d.storage_provider || "-",
-      fileSizeBytes: parseInt(d.file_size_bytes, 10) || 0,
+      fileSizeBytes: Number.parseInt(d.file_size_bytes, 10) || 0,
       mimeType: d.mime_type || "application/pdf",
       uploadedAt: d.uploaded_at || new Date().toISOString(),
       uploadedBy: d.user ? `${d.user.firstname} ${d.user.lastname}`.trim() : undefined,

@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/shared/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
+import { formatIDR } from "@/shared/lib/format";
 
 import type {
   CompanyOption,
@@ -28,7 +29,7 @@ import type {
   ProjectStatus,
 } from "./types";
 import { projectStatusLabel, projectStatusOptions } from "./types";
-import { formatIDR } from "./utils";
+
 
 const emptyValues: ProjectFormValues = {
   projectKey: "",

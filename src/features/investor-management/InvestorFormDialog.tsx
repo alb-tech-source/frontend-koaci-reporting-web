@@ -154,6 +154,21 @@ export function InvestorFormDialog({
     onSubmit(values, selectedFile);
   };
 
+  let submitButtonLabel: React.ReactNode;
+
+  if (isSubmitting) {
+    submitButtonLabel = (
+      <>
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        Menyimpan...
+      </>
+    );
+  } else if (mode === "edit") {
+    submitButtonLabel = "Simpan Perubahan";
+  } else {
+    submitButtonLabel = "Simpan Investor";
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
@@ -373,7 +388,9 @@ export function InvestorFormDialog({
                 inputMode="numeric"
                 placeholder="Contoh: 1234567890"
                 value={values.accountNumber}
-                onChange={(e) => set("accountNumber", e.target.value.replace(/\D/g, ""))}
+                onChange={(e) =>
+                  set("accountNumber", e.target.value.replace(/\D/g, ""))
+                }
                 required
               />
             </div>
@@ -490,7 +507,12 @@ export function InvestorFormDialog({
                       id="heir-rek"
                       inputMode="numeric"
                       value={values.heir.accountNumber}
-                      onChange={(e) => setHeir("accountNumber", e.target.value.replace(/\D/g, ""))}
+                      onChange={(e) =>
+                        setHeir(
+                          "accountNumber",
+                          e.target.value.replace(/\D/g, ""),
+                        )
+                      }
                     />
                   </div>
                   <div className="space-y-2">
@@ -535,22 +557,13 @@ export function InvestorFormDialog({
           >
             Batal
           </Button>
-          <Button 
-            type="submit" 
-            form="investor-form" 
+          <Button
+            type="submit"
+            form="investor-form"
             variant="primary"
             disabled={isSubmitting}
           >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Menyimpan...
-              </>
-            ) : mode === "edit" ? (
-              "Simpan Perubahan"
-            ) : (
-              "Simpan Investor"
-            )}
+            {submitButtonLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -55,6 +55,41 @@ const emptyForm: NewCompanyInput = {
   heirs_director_address: "",
 };
 
+const normalizeCompanyField = (value?: string | null): string => {
+  if (!value || value === "-") return "";
+  return value;
+};
+
+const isValidEmail = (value: string): boolean => {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+
+  const atIndex = trimmed.indexOf("@");
+  if (atIndex <= 0 || atIndex !== trimmed.lastIndexOf("@")) return false;
+
+  const domain = trimmed.slice(atIndex + 1);
+  if (!domain || domain.includes(" ")) return false;
+
+  const lastDotIndex = domain.lastIndexOf(".");
+  return lastDotIndex > 0 && lastDotIndex < domain.length - 1;
+};
+
+const buildFormFromCompany = (data: Company): NewCompanyInput => ({
+  company_name: normalizeCompanyField(data.nama),
+  company_type: (data.jenis as CompanyType) || "PT",
+  industry_sector: normalizeCompanyField(data.sektor),
+  description: normalizeCompanyField(data.deskripsi),
+  director_name: normalizeCompanyField(data.direktorNama),
+  director_phone: normalizeCompanyField(data.direktorTelepon),
+  company_email: normalizeCompanyField(data.email),
+  director_privy: normalizeCompanyField(data.direktorPrivy),
+  company_address: normalizeCompanyField(data.alamat),
+  website: normalizeCompanyField(data.website),
+  heirs_director_name: normalizeCompanyField(data.ahliWarisNama),
+  heirs_director_phone: normalizeCompanyField(data.ahliWarisTelepon),
+  heirs_director_address: normalizeCompanyField(data.ahliWarisAlamat),
+});
+
 export function CompanyFormDialog({
   open,
   onOpenChange,
@@ -67,25 +102,16 @@ export function CompanyFormDialog({
   const [formError, setFormError] = useState("");
 
   useEffect(() => {
-    if (open && mode === "edit" && initialData) {
-      setForm({
-        company_name: initialData.nama || "",
-        company_type: initialData.jenis || "PT",
-        industry_sector: initialData.sektor !== "-" ? initialData.sektor : "",
-        description: initialData.deskripsi !== "-" ? initialData.deskripsi : "",
-        director_name: initialData.direktorNama !== "-" ? initialData.direktorNama : "",
-        director_phone: initialData.direktorTelepon !== "-" ? initialData.direktorTelepon : "",
-        company_email: initialData.email !== "-" ? initialData.email : "",
-        director_privy: initialData.direktorPrivy !== "-" ? initialData.direktorPrivy : "",
-        company_address: initialData.alamat !== "-" ? initialData.alamat : "",
-        website: initialData.website !== "-" ? initialData.website : "",
-        heirs_director_name: initialData.ahliWarisNama !== "-" ? initialData.ahliWarisNama : "",
-        heirs_director_phone: initialData.ahliWarisTelepon && initialData.ahliWarisTelepon !== "-" ? initialData.ahliWarisTelepon : "",
-        heirs_director_address: initialData.ahliWarisAlamat && initialData.ahliWarisAlamat !== "-" ? initialData.ahliWarisAlamat : "",
-      });
-      setFormError("");
-    } else if (open && mode === "create") {
+    if (!open) return;
+
+    if (mode === "create") {
       setForm(emptyForm);
+      setFormError("");
+      return;
+    }
+
+    if (mode === "edit" && initialData) {
+      setForm(buildFormFromCompany(initialData));
       setFormError("");
     }
   }, [open, mode, initialData]);
@@ -102,10 +128,10 @@ export function CompanyFormDialog({
     if (!form.company_name.trim()) {
       return setFormError("Nama perusahaan wajib diisi.");
     }
-    if (!form.company_email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.company_email)) {
+    if (!isValidEmail(form.company_email)) {
       return setFormError("Format email perusahaan tidak valid.");
     }
-    if (form.director_phone && !/^\+?[0-9]{10,15}$/.test(form.director_phone)) {
+    if (form.director_phone && !/^\+?\d{10,15}$/.test(form.director_phone)) {
       return setFormError("Format nomor telepon direktur tidak valid.");
     }
 
