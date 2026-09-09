@@ -12,6 +12,7 @@ import {
   Building2,
   UserCog,
   FolderKanban,
+  Wallet,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
@@ -59,6 +60,7 @@ export const defaultAdminNav: AdminNavItem[] = [
   { to: "/admin/dashboard",      label: "Dashboard",    icon: LayoutDashboard },
   { to: "/admin/investor",       label: "Investor",     icon: Users },
   { to: "/admin/users",          label: "Users",        icon: UserCog },
+  { to: "/admin/investasi",      label: "Investasi",    icon: Wallet },
   { to: "/admin/proyek",         label: "Proyek",       icon: FolderKanban },
   { to: "/admin/company",        label: "Company",      icon: Building2 },
   { to: "/admin/activity-log",   label: "Log Aktivitas", icon: Activity },
