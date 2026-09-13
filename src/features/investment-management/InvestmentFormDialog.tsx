@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/shared/components/ui/button";
@@ -66,23 +66,26 @@ export function InvestmentFormDialog({
   const [values, setValues] = useState<InvestmentFormValues>(emptyValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    if (!open) return;
+  // Reset form saat dialog dibuka / target berubah — pola reset-saat-render (tanpa effect)
+  const resetKey = open ? `${mode}:${initialValue?.projectInvestmentId ?? "baru"}` : "tutup";
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
+  if (resetKey !== prevResetKey) {
+    setPrevResetKey(resetKey);
     setErrors({});
-    if (mode === "edit" && initialValue) {
-      setValues({
-        project_id: initialValue.projectId,
-        investor_id: initialValue.investorId,
-        amount: initialValue.amount,
-        total_package: initialValue.totalPackage,
-        source_account_transaction: initialValue.sourceAccountTransaction ?? "",
-        account_reference: initialValue.accountReference ?? "",
-        receipt_number: initialValue.receiptNumber ?? "",
-        payment_method: initialValue.paymentMethod,
-        destination_account_number: initialValue.destinationAccountNumber ?? "",
-      });
-    } else setValues(emptyValues);
-  }, [open, mode, initialValue]);
+    setValues(mode === "edit" && initialValue
+      ? {
+          project_id: initialValue.projectId,
+          investor_id: initialValue.investorId,
+          amount: initialValue.amount,
+          total_package: initialValue.totalPackage,
+          source_account_transaction: initialValue.sourceAccountTransaction ?? "",
+          account_reference: initialValue.accountReference ?? "",
+          receipt_number: initialValue.receiptNumber ?? "",
+          payment_method: initialValue.paymentMethod,
+          destination_account_number: initialValue.destinationAccountNumber ?? "",
+        }
+      : emptyValues);
+  }
 
   const set = <K extends keyof InvestmentFormValues>(
     key: K,

@@ -41,6 +41,15 @@ interface DocumentListPanelProps {
   className?: string;
 }
 
+// Bentuk mentah item dokumen dari GET /investor-documents/investor/:id
+interface InvestorDocumentRow {
+  document_id: string;
+  document_name: string;
+  mime_type: string;
+  file_size_bytes: number;
+  uploaded_at: string;
+}
+
 // Helper untuk format ukuran file
 function formatFileSize(bytes: number): string {
   if (!bytes) return "0 B";
@@ -88,7 +97,7 @@ export function DocumentListPanel({
   const queryClient = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
   
-  const [pendingDelete, setPendingDelete] = useState<Record<string, any> | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<InvestorDocumentRow | null>(null);
   const [isDownloading, setIsDownloading] = useState<string | null>(null);
 
   const { data: documents = [], isLoading } = useQuery({
@@ -165,7 +174,7 @@ export function DocumentListPanel({
 
     return (
       <ul className="space-y-2">
-        {documents.map((doc: Record<string, any>) => (
+        {documents.map((doc: InvestorDocumentRow) => (
           <li
             key={doc.document_id}
             className="flex items-center gap-3 rounded-2xl border border-border bg-background p-3 shadow-card"

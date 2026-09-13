@@ -109,6 +109,8 @@ const Carousel = React.forwardRef<
         return;
       }
 
+      // Sinkronisasi awal state tombol scroll dari API embla (kode vendor shadcn).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       onSelect(api);
       api.on("reInit", onSelect);
       api.on("select", onSelect);

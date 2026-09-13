@@ -6,9 +6,9 @@ import { Card, CardContent, CardHeader } from "@/shared/components/ui/card";
 import { KoaciLogo } from "@/shared/components/KoaciLogo";
 import { LoginForm, type LoginFormValues } from "@/features/auth/LoginForm";
 
-import { login, fetchCurrentUser } from "@/features/auth/api"; 
+import { login, fetchCurrentUser } from "@/features/auth/api";
 import { useAuthStore } from "@/shared/store/authStore";
-import { getErrorMessage } from "@/shared/lib/axios"; 
+import { getErrorMessage } from "@/shared/lib/axios";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -26,10 +26,10 @@ export default function AdminLoginPage() {
       const profileResponse = await fetchCurrentUser();
 
       if (profileResponse?.success && profileResponse.data) {
-        setAuth(profileResponse.data); 
-        
+        setAuth(profileResponse.data.user);
+
         document.cookie = `user_role=${profileResponse.data.role}; path=/; max-age=86400`;
-        
+
         router.push("/admin/dashboard");
       } else {
         setError("Gagal memuat profil pengguna dari server.");

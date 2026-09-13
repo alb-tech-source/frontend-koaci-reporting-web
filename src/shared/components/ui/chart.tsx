@@ -1,5 +1,6 @@
 import * as React from "react";
 import * as RechartsPrimitive from "recharts";
+import type { LegendPayload, TooltipPayloadEntry } from "recharts";
 
 import { cn } from "@/shared/lib/utils";
 
@@ -109,9 +110,9 @@ const ChartTooltipContent = React.forwardRef<
       indicator?: "line" | "dot" | "dashed";
       nameKey?: string;
       labelKey?: string;
-      payload?: any[];
+      payload?: TooltipPayloadEntry[];
       active?: boolean;
-      label?: any;
+      label?: string | number;
     }
 >(
   (
@@ -195,7 +196,7 @@ const ChartTooltipContent = React.forwardRef<
 
               return (
                 <div
-                  key={item.dataKey}
+                  key={`${item.dataKey}`}
                   className={cn(
                     "flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:text-muted-foreground",
                     indicator === "dot" && "items-center",
@@ -261,7 +262,7 @@ ChartTooltipContent.displayName = "ChartTooltip";
 
 const ChartLegend = RechartsPrimitive.Legend;
 type ChartLegendContentProps = React.ComponentProps<"div"> & {
-  payload?: any[];
+  payload?: LegendPayload[];
   verticalAlign?: "top" | "middle" | "bottom";
   hideIcon?: boolean;
   nameKey?: string;

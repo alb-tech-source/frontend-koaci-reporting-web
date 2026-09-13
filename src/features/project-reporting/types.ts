@@ -57,7 +57,6 @@ export interface MediaUploadValues {
   media_type: ReportingMediaType;
   media_name: string;
   file: File;
-  storage_provider?: string;
 }
 
 export interface ReportingProjectOption {

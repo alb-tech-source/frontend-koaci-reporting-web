@@ -16,7 +16,7 @@ import {
   FileText,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useHydrated } from "@/shared/hooks/use-hydrated";
 
 import { Input } from "@/shared/components/ui/input";
 import { Button } from "@/shared/components/ui/button";
@@ -57,58 +57,86 @@ export interface AdminNavItem {
   icon: LucideIcon;
 }
 
-export const defaultAdminNav: AdminNavItem[] = [
-  { to: "/admin/dashboard",      label: "Dashboard",     icon: LayoutDashboard },
-  { to: "/admin/investor",       label: "Investor",      icon: Users },
-  { to: "/admin/users",          label: "Users",         icon: UserCog },
-  { to: "/admin/investasi",      label: "Investasi",     icon: Wallet },
-  { to: "/admin/proyek",         label: "Proyek",        icon: FolderKanban },
-  { to: "/admin/company",        label: "Company",       icon: Building2 },
-  { to: "/admin/laporan",        label: "Laporan",       icon: FileText },
-  { to: "/admin/activity-log",   label: "Log Aktivitas", icon: Activity },
+export interface TitleNavItem {
+  title: string;
+  nav: AdminNavItem[];
+}
+
+export const defaultAdminNav: TitleNavItem[] = [
+  {
+    title: "Menu",
+    nav: [
+      { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/admin/users", label: "Users", icon: UserCog },
+      { to: "/admin/investor", label: "Investor", icon: Users },
+      { to: "/admin/company", label: "Company", icon: Building2 },
+      { to: "/admin/proyek", label: "Proyek", icon: FolderKanban },
+    ],
+  },
+  {
+    title: "Transaksi",
+    nav: [
+      { to: "/admin/investasi", label: "Investasi", icon: Wallet },
+      { to: "/admin/laporan", label: "Laporan", icon: FileText },
+    ],
+  },
+  {
+    title: "Monitoring",
+    nav: [
+      { to: "/admin/activity-log", label: "Log Aktivitas", icon: Activity },
+    ],
+  },
 ];
-  
+
 interface AdminShellProps {
   children: ReactNode;
-  navItems?: AdminNavItem[];
+  navItems?: TitleNavItem[];
   title?: string;
-  user?: { name?: string; email?: string }; 
+  user?: { name?: string; email?: string };
 }
 
 export function AdminShell({
   children,
   navItems = defaultAdminNav,
-  title = "Koaci Admin",
+  title = "Koaci Dashboard",
   user: fallbackUser,
 }: Readonly<AdminShellProps>) {
   const user = useAuthStore((state) => state.user);
-  
-  const currentRole = user?.role ?? ""; 
-  const canViewUsers = user?.role === "superadmin" || (user?.permissions?.includes("users:read") ?? false);
 
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const currentRole = user?.role.role_name ?? "";
+  const canViewUsers =
+    user?.role.role_name === "superadmin" ||
+    (user?.role.permissions?.includes("users:read:any") ?? false);
 
-  // === LOGIKA FILTER MENU ===
-  const filteredNavItems = navItems.filter((item) => {
-    if (item.to === "/admin/activity-log") {
-      return currentRole === "bod";
-    }
+  const mounted = useHydrated();
 
-    if (item.to === "/admin/users") {
-      return canViewUsers || ["superadmin", "admin", "bod"].includes(currentRole);
-    }
+  // === LOGIKA FILTER MENU (per grup, grup kosong disembunyikan) ===
+  const filteredNavItems = navItems
+    .map((group) => ({
+      ...group,
+      nav: group.nav.filter((item) => {
+        if (item.to === "/admin/activity-log") {
+          return currentRole === "bod";
+        }
 
-    return true;
-  });
+        if (item.to === "/admin/users") {
+          return (
+            canViewUsers || ["superadmin", "admin", "bod"].includes(currentRole)
+          );
+        }
+
+        return true;
+      }),
+    }))
+    .filter((group) => group.nav.length > 0);
 
   // Ambil nama dari profil, fallback ke default jika tidak ada
   const displayName = user?.firstname ?? "Pengguna";
   const displayEmail = user?.email ?? fallbackUser?.email ?? "admin@koaci.id";
   const initials = displayName.slice(0, 2).toUpperCase();
-  
+
   if (!mounted) {
-    return <div className="min-h-screen w-full bg-muted/40" />; 
+    return <div className="min-h-screen w-full bg-muted/40" />;
   }
 
   return (
@@ -125,14 +153,14 @@ export function AdminShell({
               />
               <Input
                 type="search"
-                placeholder="Cari investor, portofolio, laporan…"
+                placeholder="Cari investor..."
                 className="h-9 pl-9"
               />
             </div>
             <div className="ml-auto flex items-center gap-2">
-              <Button variant="ghost" size="icon" aria-label="Notifikasi">
+              {/* <Button variant="ghost" size="icon" aria-label="Notifikasi">
                 <Bell className="h-4 w-4" />
-              </Button>
+              </Button> */}
               <div className="hidden items-center gap-2 sm:flex">
                 <div className="text-right leading-tight">
                   <p className="text-sm font-medium text-foreground">
@@ -158,14 +186,16 @@ export function AdminShell({
                     <AlertDialogHeader>
                       <AlertDialogTitle>Keluar dari akun?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Anda perlu login kembali untuk mengakses Reporting Console.
+                        Anda perlu login kembali untuk mengakses Reporting
+                        Console.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Batal</AlertDialogCancel>
                       <AlertDialogAction
-                      className="bg-danger text-white hover:bg-danger/90"
-                      onClick={() => logout("/")}>
+                        className="bg-danger text-white hover:bg-danger/90"
+                        onClick={() => logout("/")}
+                      >
                         Ya, Keluar
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -185,7 +215,7 @@ function AdminSidebar({
   navItems,
   title,
 }: Readonly<{
-  navItems: AdminNavItem[];
+  navItems: TitleNavItem[];
   title: string;
 }>) {
   const { state } = useSidebar();
@@ -213,37 +243,39 @@ function AdminSidebar({
         </div>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Menu</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navItems.map((item) => {
-                const active = isActive(item.to);
-                const Icon = item.icon;
-                return (
-                  <SidebarMenuItem key={item.to}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={active}
-                      tooltip={item.label}
-                    >
-                      <Link
-                        href={item.to}
-                        className={cn(
-                          "flex items-center gap-2",
-                          active && "text-brand font-medium",
-                        )}
+        {navItems.map((group) => (
+          <SidebarGroup key={group.title}>
+            <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.nav.map((item) => {
+                  const active = isActive(item.to);
+                  const Icon = item.icon;
+                  return (
+                    <SidebarMenuItem key={item.to}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={active}
+                        tooltip={item.label}
                       >
-                        <Icon className="h-4 w-4" />
-                        <span>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                        <Link
+                          href={item.to}
+                          className={cn(
+                            "flex items-center gap-2",
+                            active && "text-brand font-medium",
+                          )}
+                        >
+                          <Icon className="h-4 w-4" />
+                          <span>{item.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
     </Sidebar>
   );

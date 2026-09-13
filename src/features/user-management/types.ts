@@ -69,6 +69,8 @@ export interface Permission {
   id: string;
   key: string;
   label: string;
+  /** Role yang memiliki permission ini secara default (dari kolom default_of_role) */
+  defaultOfRole: string[];
 }
 
 export interface ApiUser {

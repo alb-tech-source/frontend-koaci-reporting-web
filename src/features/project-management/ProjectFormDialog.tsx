@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
 import { Button } from "@/shared/components/ui/button";
@@ -19,7 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/shared/components/ui/tabs";
 import { formatIDR } from "@/shared/lib/format";
 
 import type {
@@ -29,7 +34,6 @@ import type {
   ProjectStatus,
 } from "./types";
 import { projectStatusLabel, projectStatusOptions } from "./types";
-
 
 const emptyValues: ProjectFormValues = {
   projectKey: "",
@@ -84,15 +88,20 @@ export function ProjectFormDialog({
   const [values, setValues] = useState<ProjectFormValues>(emptyValues);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!open) return;
+  // Reset form saat dialog dibuka / target berubah — pola reset-saat-render (tanpa effect)
+  const resetKey = open
+    ? `${mode}:${initialProject?.projectId ?? "baru"}`
+    : "tutup";
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
+  if (resetKey !== prevResetKey) {
+    setPrevResetKey(resetKey);
     setError(null);
     setValues(
       mode === "edit" && initialProject
         ? toValues(initialProject)
         : emptyValues,
     );
-  }, [open, mode, initialProject]);
+  }
 
   const set = <K extends keyof ProjectFormValues>(
     key: K,
@@ -161,8 +170,11 @@ export function ProjectFormDialog({
                   value={values.projectKey}
                   placeholder="ksi-2026-001"
                   className="font-mono"
-                  onChange={(e) => 
-                    set("projectKey", e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""))
+                  onChange={(e) =>
+                    set(
+                      "projectKey",
+                      e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""),
+                    )
                   }
                 />
               </Row>
@@ -282,9 +294,7 @@ export function ProjectFormDialog({
                   <Input
                     inputMode="numeric"
                     value={values.sourceAccountNumber}
-                    onChange={(e) =>
-                      set("sourceAccountNumber", e.target.value)
-                    }
+                    onChange={(e) => set("sourceAccountNumber", e.target.value)}
                   />
                 </Row>
                 <Row label="Rekening Tujuan">
@@ -402,15 +412,37 @@ function NumberField({
   value: number;
   onChange: (value: number) => void;
 }>) {
+  // Buffer teks lokal — tanpa ini, ketikan desimal ("12.") ter-reset oleh round-trip Number()
+  const [text, setText] = useState(value ? String(value) : "");
+  const [prevValue, setPrevValue] = useState(value);
+
+  // Resinkron hanya saat nilai berubah dari luar (reset form/ganti data) — pola reset-saat-render
+  if (value !== prevValue) {
+    setPrevValue(value);
+    if (value !== parseAmount(text)) {
+      setText(value ? String(value) : "");
+    }
+  }
+
   return (
     <div className="space-y-1.5">
       <Label>{label}</Label>
       <Input
         type="number"
+        inputMode="decimal"
         min={0}
-        value={String(value)}
-        onChange={(e) => onChange(Number(e.target.value) || 0)}
+        step="any"
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          onChange(parseAmount(e.target.value));
+        }}
       />
     </div>
   );
+}
+
+function parseAmount(raw: string): number {
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : 0;
 }

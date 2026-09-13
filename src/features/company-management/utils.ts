@@ -1,3 +1,4 @@
+import type { BadgeProps } from "@/shared/components/ui/badge";
 import { CompanyStatus } from "./types";
 
 export function getCompanyStatusLabel(status: CompanyStatus) {
@@ -9,11 +10,11 @@ export function getCompanyStatusLabel(status: CompanyStatus) {
   }
 }
 
-export function getCompanyStatusBadgeVariant(status: CompanyStatus) {
+export function getCompanyStatusBadgeVariant(status: CompanyStatus): BadgeProps["variant"] {
   switch (status) {
-    case "active": return "success";
+    case "active": return "active";
     case "inactive": return "outline";
-    case "blacklist": return "danger";
+    case "blacklist": return "cancelled";
     default: return "outline";
   }
 }

@@ -1,14 +1,18 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 export interface UserProfile {
-  userId: string;
+  user_id: string;
   email: string;
-  role: string;
-  permissions: string[];
+  role: {
+    role_name: string;
+    permissions: string[];
+  };
   firstname?: string;
   lastname?: string;
-  [key: string]: any;
+  [key: string]: unknown;
+  is_active?: boolean;
+  last_login_at?: string;
 }
 
 interface AuthState {
@@ -24,13 +28,13 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       isAuthenticated: false,
-      
+
       setAuth: (user) => set({ user, isAuthenticated: true }),
-      
+
       clearAuth: () => set({ user: null, isAuthenticated: false }),
     }),
     {
-      name: 'koaci-auth-storage',
-    }
-  )
+      name: "koaci-auth-storage",
+    },
+  ),
 );

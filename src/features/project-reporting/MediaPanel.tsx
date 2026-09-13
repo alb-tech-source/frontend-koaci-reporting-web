@@ -7,6 +7,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 
+import { getErrorMessage } from "@/shared/lib/axios";
 import { deleteReportingMedia, fetchReportingMedia, getMediaDownloadUrl, uploadReportingMedia } from "./api";
 import type { ReportingMediaType } from "./types";
 import { formatDateID, formatFileSize, mediaTypeLabel } from "./utils";
@@ -52,7 +53,7 @@ export function MediaPanel({ reportingId, canUpload, canDelete }: Readonly<Props
       toast.success("Media berhasil diunggah.");
       if (fileInput.current) fileInput.current.value = "";
     },
-    onError: () => toast.error("Gagal mengunggah media."),
+    onError: (err) => toast.error(getErrorMessage(err, "Gagal mengunggah media.")),
   });
 
   const deleteMutation = useMutation({

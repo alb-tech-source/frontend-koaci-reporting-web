@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner"; 
@@ -42,6 +42,12 @@ const ROLE_LABELS: Record<string, string> = {
 
 const ROLES_FULL_LOCKED = new Set(["superadmin"]);
 
+// Permission bawaan sebuah role — diambil dari field default_of_role tiap permission
+const defaultPermissionKeys = (role: string, permissions: Permission[]) =>
+  permissions
+    .filter((p) => p.defaultOfRole.includes(role))
+    .map((p) => p.key);
+
 export function UserFormDialog({
   open,
   onOpenChange,
@@ -68,22 +74,22 @@ export function UserFormDialog({
     staleTime: 5 * 60 * 1000,
   });
 
-  useEffect(() => {
-    if (!open) return;
-    if (mode === "edit" && initialUser) {
-      setValues({
-        firstName: initialUser.firstName || "",
-        lastName: initialUser.lastName || "",
-        email: initialUser.email || "",
-        role: initialUser.role,
-        permissions: initialUser.permissions,
-        activate: initialUser.status === "active",
-      });
-    } else {
-      setValues(emptyValues);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, mode, initialUser]);
+  // Reset form saat dialog dibuka / target berubah — pola reset-saat-render (tanpa effect)
+  const resetKey = open ? `${mode}:${initialUser?.id ?? "baru"}` : "tutup";
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
+  if (resetKey !== prevResetKey) {
+    setPrevResetKey(resetKey);
+    setValues(mode === "edit" && initialUser
+      ? {
+          firstName: initialUser.firstName || "",
+          lastName: initialUser.lastName || "",
+          email: initialUser.email || "",
+          role: initialUser.role,
+          permissions: initialUser.permissions,
+          activate: initialUser.status === "active",
+        }
+      : emptyValues);
+  }
 
   const togglePermission = (key: string, checked: boolean) => {
     setValues((v) => ({
@@ -105,9 +111,10 @@ export function UserFormDialog({
     const payload = { ...values };
 
     if (mode === "edit" && initialUser) {
-      if (payload.firstName === initialUser.firstName) delete (payload as any).firstName;
-      if (payload.lastName === (initialUser.lastName || "")) delete (payload as any).lastName;
-      if (payload.email === initialUser.email) delete (payload as any).email;
+      // Hanya kirim field yang berubah — field yang sama dihapus dari payload
+      if (payload.firstName === initialUser.firstName) delete (payload as Partial<UserFormValues>).firstName;
+      if (payload.lastName === (initialUser.lastName || "")) delete (payload as Partial<UserFormValues>).lastName;
+      if (payload.email === initialUser.email) delete (payload as Partial<UserFormValues>).email;
     }
 
     onSubmit(payload);
@@ -180,7 +187,17 @@ export function UserFormDialog({
               <Label>Role</Label>
               <Select
                 value={values.role}
-                onValueChange={(r) => setValues((v) => ({ ...v, role: r as UserRole }))}
+                onValueChange={(r) => {
+                  const role = r as UserRole;
+                  setValues((v) => ({
+                    ...v,
+                    role,
+                    // Centang otomatis izin default role — hanya jika daftar permission sudah termuat
+                    permissions: permissions.length > 0
+                      ? defaultPermissionKeys(role, permissions)
+                      : v.permissions,
+                  }));
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Pilih role" />
