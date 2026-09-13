@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/shared/components/ui/button";
@@ -33,23 +33,24 @@ export function ReportingFormDialog({ open, onOpenChange, mode, initialValue, pr
   const [form, setForm] = useState(emptyState);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    if (!open) return;
+  // Reset form saat dialog dibuka / target berubah — pola reset-saat-render (tanpa effect)
+  const resetKey = open ? `${mode}:${initialValue?.reportingId ?? "baru"}` : "tutup";
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
+  if (resetKey !== prevResetKey) {
+    setPrevResetKey(resetKey);
     setErrors({});
-    if (mode === "edit" && initialValue) {
-      setForm({
-        projectId: initialValue.projectId,
-        reportDate: toDateInput(initialValue.reportDate),
-        progress: String(initialValue.estimateProgressPercentage),
-        summary: initialValue.narrativeSummary,
-        issues: initialValue.issuesBlockers,
-        nextPlan: initialValue.nextWeekPlan,
-        fund: initialValue.fundDisbursed ? String(initialValue.fundDisbursed) : "",
-      });
-    } else {
-      setForm(emptyState);
-    }
-  }, [open, mode, initialValue]);
+    setForm(mode === "edit" && initialValue
+      ? {
+          projectId: initialValue.projectId,
+          reportDate: toDateInput(initialValue.reportDate),
+          progress: String(initialValue.estimateProgressPercentage),
+          summary: initialValue.narrativeSummary,
+          issues: initialValue.issuesBlockers,
+          nextPlan: initialValue.nextWeekPlan,
+          fund: initialValue.fundDisbursed ? String(initialValue.fundDisbursed) : "",
+        }
+      : emptyState);
+  }
 
   const set = (key: keyof typeof form, value: string) => setForm((f) => ({ ...f, [key]: value }));
   const pct = Math.min(100, Math.max(0, Number(form.progress) || 0));

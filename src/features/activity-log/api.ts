@@ -1,16 +1,31 @@
 import api from "@/shared/lib/axios";
 import type { ActivityLogParams, ActivityLogResponse } from "./types";
 
+// Bentuk mentah item log dari GET /activity-logs
+interface ApiActivityLog {
+  activity_id: string;
+  timestamp: string;
+  user_id: string;
+  action: string;
+  entity_type: string;
+  ip_address: string;
+  user?: {
+    firstname?: string;
+    lastname?: string;
+    role?: { role_name?: string };
+  };
+}
+
 export async function fetchActivityLogs(params: ActivityLogParams): Promise<ActivityLogResponse> {
   try {
     const cleanParams = Object.fromEntries(
-      Object.entries(params).filter(([_, v]) => v != null && v !== "")
+      Object.entries(params).filter(([, v]) => v != null && v !== "")
     );
     const { data } = await api.get("/activity-logs", { params: cleanParams });
 
     const rawItems = data?.data ?? [];
 
-    const mappedItems = rawItems.map((log: any) => ({
+    const mappedItems = rawItems.map((log: ApiActivityLog) => ({
       id: log.activity_id,
       createdAt: log.timestamp,
       userName: `${log.user?.firstname ?? ""} ${log.user?.lastname ?? ""}`.trim() || "-",

@@ -268,7 +268,7 @@ export function LegalDocumentsPanel({
           <DialogHeader>
             <DialogTitle>Tambah Dokumen</DialogTitle>
             <DialogDescription>
-              Format PDF, JPG, atau PNG dengan ukuran maksimal 10 MB.
+              Format PDF, JPG, PNG, DOC, atau DOCX dengan ukuran maksimal 100 MB.
             </DialogDescription>
           </DialogHeader>
           
@@ -304,7 +304,7 @@ export function LegalDocumentsPanel({
               <Input
                 id="docFile"
                 type="file"
-                accept= ".pdf, image/jpeg, image/png, image/jpg"
+                accept= ".pdf, image/jpeg, image/png, image/jpg, .doc, .docx"
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                 className="h-11 cursor-pointer pt-2 file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-4 file:py-1 file:text-sm file:font-medium file:text-slate-900 hover:file:bg-slate-200 dark:file:bg-slate-800 dark:file:text-slate-200"
               />

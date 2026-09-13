@@ -1,8 +1,12 @@
 // Status dari backend
 export type CompanyStatus = "active" | "inactive" | "blacklist";
-export type CompanyType = "PT" | "CV" | "Firma" | "Perorangan" | "UD" | "Koperasi";
+// Selaras dengan enum CompanyType di backend (schema.prisma)
+export type CompanyType = "PT" | "CV" | "Firma" | "Perorangan";
+
+export type StatusType = "active" | "inactive" | "blacklist";
 
 // Response dari GET /companies
+// Field alias opsional (id, name, dll.) menampung variasi penamaan dari backend.
 export interface ApiCompany {
   company_id: string;
   company_name: string;
@@ -22,6 +26,13 @@ export interface ApiCompany {
   createdAt: string;
   updatedAt: string;
   companyDocument: ApiCompanyDocument[];
+  id?: string;
+  name?: string;
+  type?: string;
+  sector?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
 }
 
 export interface ApiCompanyDocument {
@@ -35,7 +46,13 @@ export interface ApiCompanyDocument {
   mime_type: string;
   uploaded_by: string;
   uploaded_at: string;
-  user?: { user_id: string; firstname: string; lastname: string; email: string };
+  user?: {
+    user_id: string;
+    firstname: string;
+    lastname: string;
+    email: string;
+  };
+  id?: string;
 }
 
 // App-level types (tetap pakai bahasa Indonesia untuk kompatibilitas UI)
@@ -85,20 +102,20 @@ export interface NewCompanyInput {
   heirs_director_name: string;
   heirs_director_phone?: string;
   heirs_director_address?: string;
+  status?: string;
 }
 
 // Mapper
-// Mapper
 export function mapApiCompany(c: ApiCompany): Company {
   return {
-    id: c.company_id || (c as any).id,
-    nama: c.company_name || (c as any).name || "Nama Tidak Diketahui",
-    jenis: c.company_type || (c as any).type || "PT",
-    sektor: c.industry_sector || (c as any).sector || "-",
+    id: c.company_id || c.id || "",
+    nama: c.company_name || c.name || "Nama Tidak Diketahui",
+    jenis: c.company_type || c.type || "PT",
+    sektor: c.industry_sector || c.sector || "-",
     deskripsi: c.description || "-",
-    email: c.company_email || (c as any).email || "-",
-    telepon: c.director_phone || (c as any).phone || "-",
-    alamat: c.company_address || (c as any).address || "-",
+    email: c.company_email || c.email || "-",
+    telepon: c.director_phone || c.phone || "-",
+    alamat: c.company_address || c.address || "-",
     website: c.website || "-",
     direktorNama: c.director_name || "-",
     direktorTelepon: c.director_phone || "-",
@@ -109,14 +126,16 @@ export function mapApiCompany(c: ApiCompany): Company {
     status: c.status || "active",
     createdAt: c.createdAt || new Date().toISOString(),
     dokumen: (c.companyDocument ?? []).map((d) => ({
-      id: d.document_id || (d as any).id,
+      id: d.document_id || d.id || "",
       tipe: d.document_type || "-",
       nama: d.document_name || "-",
       provider: d.storage_provider || "-",
       fileSizeBytes: Number.parseInt(d.file_size_bytes, 10) || 0,
       mimeType: d.mime_type || "application/pdf",
       uploadedAt: d.uploaded_at || new Date().toISOString(),
-      uploadedBy: d.user ? `${d.user.firstname} ${d.user.lastname}`.trim() : undefined,
+      uploadedBy: d.user
+        ? `${d.user.firstname} ${d.user.lastname}`.trim()
+        : undefined,
     })),
   };
 }

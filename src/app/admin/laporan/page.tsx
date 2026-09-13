@@ -4,6 +4,7 @@ import { queryOptions, useMutation, useQueryClient, useSuspenseQuery } from "@ta
 import { Eye, FileBarChart, MoreHorizontal, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import axios from "axios";
 
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
@@ -110,8 +111,8 @@ function ReportingListPage() {
       toast.success("Laporan berhasil dihapus.");
       setDeleteTarget(null);
     },
-    onError: (err: any) => {
-      const status = err?.response?.status;
+    onError: (err: unknown) => {
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
       if (status === 409) {
         toast.error("Hapus semua media laporan terlebih dahulu sebelum menghapus laporan.");
       } else {

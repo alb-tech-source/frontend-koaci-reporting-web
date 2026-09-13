@@ -7,7 +7,7 @@ export function getCurrentUser() {
 }
 
 export function getCurrentRole(): string | null {
-  return getCurrentUser()?.role ?? null;
+  return getCurrentUser()?.role.role_name ?? null;
 }
 
 export function isInvestor(): boolean {
@@ -20,8 +20,8 @@ export function isUser(): boolean {
 
 export function hasPermission(permissionKey: string): boolean {
   const user = getCurrentUser();
-  if (user?.role === "superadmin") return true;
-  return user?.permissions?.includes(permissionKey) ?? false;
+  if (user?.role.role_name === "superadmin") return true;
+  return user?.role.permissions?.includes(permissionKey) ?? false;
 }
 
 export async function logout(redirectTo: string = "/") {
@@ -33,9 +33,9 @@ export async function logout(redirectTo: string = "/") {
     console.error("Gagal memanggil API logout di server", error);
   } finally {
     useAuthStore.getState().clearAuth();
-    
+
     document.cookie = "user_role=; path=/; max-age=0";
-    
+
     window.location.href = redirectTo;
   }
 }

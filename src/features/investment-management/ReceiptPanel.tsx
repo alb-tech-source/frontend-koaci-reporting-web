@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Download, FileText, Loader2, Trash2, Upload } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
+import { getErrorMessage } from "@/shared/lib/axios";
 import { formatDateID } from "@/shared/lib/format";
 import type { ProjectInvestment } from "./types";
 
@@ -33,6 +35,8 @@ export function ReceiptPanel({
     try {
       await onUpload(file, file.name);
       setFile(null); // Reset input setelah sukses
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Gagal mengunggah kwitansi."));
     } finally {
       setIsUploading(false);
     }
@@ -60,7 +64,9 @@ export function ReceiptPanel({
 
   return (
     <section className="rounded-2xl border border-border bg-background p-4 shadow-card">
-      <h3 className="mb-3 text-sm font-semibold text-foreground">Kwitansi Transaksi</h3>
+      <h3 className="mb-3 text-sm font-semibold text-foreground">
+        Kwitansi Transaksi
+      </h3>
 
       {receipt ? (
         <div className="flex flex-col justify-between rounded-xl border bg-card p-3 shadow-sm transition-hover hover:border-brand/40 sm:flex-row sm:items-center">
@@ -69,7 +75,10 @@ export function ReceiptPanel({
               <FileText className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-foreground" title={receipt.receiptName}>
+              <p
+                className="truncate text-sm font-semibold text-foreground"
+                title={receipt.receiptName}
+              >
                 {receipt.receiptName}
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground">
@@ -85,7 +94,11 @@ export function ReceiptPanel({
               onClick={handleDownloadClick}
               disabled={isDownloading}
             >
-              {isDownloading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1.5 h-3.5 w-3.5" />}
+              {isDownloading ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Download className="mr-1.5 h-3.5 w-3.5" />
+              )}
               Unduh
             </Button>
             {canManage && (
@@ -96,7 +109,11 @@ export function ReceiptPanel({
                 onClick={handleDeleteClick}
                 disabled={isDeleting}
               >
-                {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                {isDeleting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="h-3.5 w-3.5" />
+                )}
               </Button>
             )}
           </div>
@@ -105,13 +122,15 @@ export function ReceiptPanel({
         <div className="space-y-3">
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed p-6 text-center text-muted-foreground">
             <FileText className="mb-2 h-6 w-6 opacity-20" />
-            <p className="text-sm">Belum ada kwitansi transaksi yang dilampirkan.</p>
+            <p className="text-sm">
+              Belum ada kwitansi transaksi yang dilampirkan.
+            </p>
           </div>
           {canManage && (
             <div className="flex items-center gap-2">
               <Input
                 type="file"
-                accept=".pdf, image/jpeg, image/png, image/jpg"
+                accept=".pdf, image/jpeg, image/png, image/jpg, .doc, .docx"
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                 disabled={isUploading}
                 className="h-9 cursor-pointer py-1.5 file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-0.5 file:text-xs file:font-medium file:text-slate-900 hover:file:bg-slate-200"
@@ -123,7 +142,16 @@ export function ReceiptPanel({
                 disabled={!file || isUploading}
                 onClick={handleUploadClick}
               >
-                {isUploading ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Mengunggah...</> : <><Upload className="mr-1.5 h-4 w-4" /> Unggah</>}
+                {isUploading ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />{" "}
+                    Mengunggah...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-1.5 h-4 w-4" /> Unggah
+                  </>
+                )}
               </Button>
             </div>
           )}

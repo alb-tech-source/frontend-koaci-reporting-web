@@ -36,12 +36,12 @@ export function TableSkeleton() {
   );
 }
 
-export function EmptyStateGeneral({ 
-  title, 
-  description, 
-  icon: Icon = FolderKanban, 
-  action 
-}: Readonly<{ title: string; description: string; icon?: any; action?: React.ReactNode }>) {
+export function EmptyStateGeneral({
+  title,
+  description,
+  icon: Icon = FolderKanban,
+  action
+}: Readonly<{ title: string; description: string; icon?: React.ComponentType<{ className?: string }>; action?: React.ReactNode }>) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
       <div className="grid h-14 w-14 place-items-center rounded-full bg-muted">

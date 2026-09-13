@@ -33,7 +33,8 @@ import {
 } from "@/shared/components/ui/table";
 
 import { DeleteConfirmDialog } from "@/shared/components/ui/feedback";
-import { formatDateID } from "@/shared/lib/format"; 
+import { getErrorMessage } from "@/shared/lib/axios";
+import { formatDateID } from "@/shared/lib/format";
 import type { Project } from "./types";
 import {
   fetchProjectDocuments,
@@ -56,6 +57,19 @@ const DOCUMENT_TYPES = [
   "KONTRAK",
   "LAINNYA",
 ];
+
+// Bentuk mentah item dokumen dari GET /project-documents/project/:id
+interface ApiProjectDocument {
+  document_id?: string;
+  id?: string;
+  document_name?: string;
+  name?: string;
+  document_type?: string;
+  file_size_bytes?: number;
+  sizeBytes?: number;
+  uploaded_at?: string;
+  uploadedAt?: string;
+}
 
 function formatFileSize(bytes?: number): string {
   if (!bytes) return "0 B";
@@ -97,7 +111,7 @@ export function ProjectDocumentsPanel({
       resetUploadForm();
       queryClient.invalidateQueries({ queryKey: ["admin", "project-documents", project?.projectId] });
     },
-    onError: () => toast.error("Gagal mengunggah dokumen proyek."),
+    onError: (err) => toast.error(getErrorMessage(err, "Gagal mengunggah dokumen proyek.")),
   });
 
   const deleteMutation = useMutation({
@@ -150,24 +164,28 @@ export function ProjectDocumentsPanel({
       );
     }
 
-    return documents.map((doc: any) => (
-      <TableRow key={doc.document_id || doc.id}>
-        <TableCell className="font-medium">{doc.document_name || doc.name}</TableCell>
+    return documents.map((doc: ApiProjectDocument) => {
+      const docId = doc.document_id || doc.id || "";
+      const docName = doc.document_name || doc.name || "Tanpa Nama";
+      return (
+      <TableRow key={docId}>
+        <TableCell className="font-medium">{docName}</TableCell>
         <TableCell><Badge variant="outline">{doc.document_type || "Lainnya"}</Badge></TableCell>
         <TableCell className="text-muted-foreground">{formatFileSize(doc.file_size_bytes || doc.sizeBytes)}</TableCell>
-        <TableCell className="text-muted-foreground">{formatDateID(doc.uploaded_at || doc.uploadedAt)}</TableCell>
+        <TableCell className="text-muted-foreground">{formatDateID(doc.uploaded_at || doc.uploadedAt || "")}</TableCell>
         <TableCell className="text-right">
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="icon" onClick={() => handleDownload(doc.document_id || doc.id)} disabled={downloadingId === (doc.document_id || doc.id)}>
-              {downloadingId === (doc.document_id || doc.id) ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : <Download className="h-4 w-4" />}
+            <Button variant="ghost" size="icon" onClick={() => handleDownload(docId)} disabled={downloadingId === docId}>
+              {downloadingId === docId ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : <Download className="h-4 w-4" />}
             </Button>
-            <Button variant="ghost" size="icon" className="text-danger hover:bg-danger/10 hover:text-danger" onClick={() => setDeleteTarget({ document_id: doc.document_id || doc.id, document_name: doc.document_name || doc.name })}>
+            <Button variant="ghost" size="icon" className="text-danger hover:bg-danger/10 hover:text-danger" onClick={() => setDeleteTarget({ document_id: docId, document_name: docName })}>
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         </TableCell>
       </TableRow>
-    ));
+      );
+    });
   };
 
   return (
@@ -219,7 +237,7 @@ export function ProjectDocumentsPanel({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Unggah Dokumen Proyek</DialogTitle>
-            <DialogDescription>Format PDF, JPG, atau PNG dengan ukuran maksimal 10 MB.</DialogDescription>
+            <DialogDescription>Format PDF, JPG, PNG, DOC, atau DOCX dengan ukuran maksimal 100 MB.</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
@@ -242,7 +260,7 @@ export function ProjectDocumentsPanel({
 
             <div className="space-y-1.5">
               <Label htmlFor="docFile">File <span className="text-danger">*</span></Label>
-              <Input id="docFile" type="file" accept=".pdf, image/jpeg, image/png, image/jpg" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="h-11 cursor-pointer pt-2 file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-4 file:py-1 file:text-sm file:font-medium file:text-slate-900 hover:file:bg-slate-200" />
+              <Input id="docFile" type="file" accept=".pdf, image/jpeg, image/png, image/jpg, .doc, .docx" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="h-11 cursor-pointer pt-2 file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-4 file:py-1 file:text-sm file:font-medium file:text-slate-900 hover:file:bg-slate-200" />
             </div>
           </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { Loader2, Upload } from "lucide-react";
 
 import { Button } from "@/shared/components/ui/button";
@@ -16,9 +16,14 @@ import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 
 // Constants
-export const MAX_DOCUMENT_SIZE = 5 * 1024 * 1024;
-export const ACCEPTED_DOCUMENT_TYPES = ".pdf,.jpg,.jpeg,.png";
-export type DocumentMimeType = "application/pdf" | "image/jpeg" | "image/png";
+export const MAX_DOCUMENT_SIZE = 100 * 1024 * 1024;
+export const ACCEPTED_DOCUMENT_TYPES = ".pdf,.jpg,.jpeg,.png,.doc,.docx";
+export type DocumentMimeType =
+  | "application/pdf"
+  | "image/jpeg"
+  | "image/png"
+  | "application/msword"
+  | "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 // Helper internal file ini
 function formatFileSize(bytes: number): string {
@@ -35,6 +40,10 @@ function resolveMimeType(file: File): DocumentMimeType | null {
   if (name.endsWith(".png") || file.type === "image/png") return "image/png";
   if (name.endsWith(".jpg") || name.endsWith(".jpeg") || file.type === "image/jpeg")
     return "image/jpeg";
+  if (name.endsWith(".doc") || file.type === "application/msword")
+    return "application/msword";
+  if (name.endsWith(".docx") || file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+    return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
   return null;
 }
 
@@ -60,16 +69,17 @@ export function AddDocumentDialog({
   const [name, setName] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
+  // Reset form saat dialog ditutup — pola reset-saat-render (tanpa effect).
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (!open) {
       setName("");
       setFile(null);
       setError(null);
-      if (inputRef.current) inputRef.current.value = "";
     }
-  }, [open]);
+  }
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -83,11 +93,11 @@ export function AddDocumentDialog({
     }
     const mimeType = resolveMimeType(file);
     if (!mimeType) {
-      setError("Format file harus PDF, JPG, atau PNG.");
+      setError("Format file harus PDF, JPG, PNG, DOC, atau DOCX.");
       return;
     }
     if (file.size > MAX_DOCUMENT_SIZE) {
-      setError("Ukuran file maksimal 5 MB.");
+      setError("Ukuran file maksimal 100 MB.");
       return;
     }
     setError(null);
@@ -101,7 +111,7 @@ export function AddDocumentDialog({
         <DialogHeader>
           <DialogTitle>Tambah Dokumen</DialogTitle>
           <DialogDescription>
-            Format PDF, JPG, atau PNG dengan ukuran maksimal 5 MB.
+            Format PDF, JPG, PNG, DOC, atau DOCX dengan ukuran maksimal 100 MB.
           </DialogDescription>
         </DialogHeader>
 
@@ -124,7 +134,7 @@ export function AddDocumentDialog({
               File <span className="text-danger">*</span>
             </Label>
             <Input
-              ref={inputRef}
+              key={String(open)}
               id="doc-file"
               type="file"
               accept={ACCEPTED_DOCUMENT_TYPES}

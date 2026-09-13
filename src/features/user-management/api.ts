@@ -28,11 +28,20 @@ export async function fetchUsers(): Promise<AppUser[]> {
 
 export async function fetchPermissions(): Promise<Permission[]> {
   const { data } = await api.get("/permissions/all");
-  const list = data.data ?? data ?? [];
-  return list.map((p: any) => ({
-    id: p.permission_id ?? p.id,
-    key: p.permission_key ?? p.key,
-    label: p.permission_name ?? p.label ?? p.permission_key,
+  const list: Array<{
+    permission_id?: string;
+    id?: string;
+    permission_key?: string;
+    key?: string;
+    permission_name?: string;
+    label?: string;
+    default_of_role?: string[];
+  }> = data.data ?? data ?? [];
+  return list.map((p) => ({
+    id: p.permission_id ?? p.id ?? "",
+    key: p.permission_key ?? p.key ?? "",
+    label: p.permission_name ?? p.label ?? p.permission_key ?? "",
+    defaultOfRole: p.default_of_role ?? [],
   }));
 }
 
@@ -57,9 +66,18 @@ export async function createUser(
   return data;
 }
 
+export interface UpdateUserPayload {
+  firstname?: string;
+  lastname?: string;
+  email?: string;
+  role_name?: string;
+  permission_ids?: string[];
+  is_active?: boolean;
+}
+
 export async function updateUser(
   id: string,
-  payload: any,
+  payload: UpdateUserPayload,
   availablePermissions: Permission[],
 ) {
   const updatedPayload = { ...payload };

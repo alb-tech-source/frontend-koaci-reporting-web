@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 
 import { Button } from "@/shared/components/ui/button";
@@ -91,33 +91,32 @@ export function InvestorFormDialog({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [userPickerOpen, setUserPickerOpen] = useState(false);
   const [nikError, setNikError] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    if (initialValue) {
-      setValues({
-        userId: initialValue.userId,
-        name: initialValue.name,
-        email: initialValue.email,
-        phone: initialValue.phone,
-        investorType: initialValue.investorType,
-        gender: initialValue.gender,
-        nik: initialValue.nik,
-        address: initialValue.address,
-        accountNumber: initialValue.accountNumber,
-        bankName: initialValue.bankName,
-        documentName: initialValue.documentName ?? "",
-        status: initialValue.status,
-        heir: initialValue.heir ?? { ...emptyHeirData },
-      });
-    } else {
-      setValues({ ...emptyValues, heir: { ...emptyHeirData } });
-    }
+  // Reset form saat dialog dibuka / target berubah — pola reset-saat-render (tanpa effect)
+  const resetKey = open ? (initialValue?.id ?? "baru") : "tutup";
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
+  if (resetKey !== prevResetKey) {
+    setPrevResetKey(resetKey);
+    setValues(initialValue
+      ? {
+          userId: initialValue.userId,
+          name: initialValue.name,
+          email: initialValue.email,
+          phone: initialValue.phone,
+          investorType: initialValue.investorType,
+          gender: initialValue.gender,
+          nik: initialValue.nik,
+          address: initialValue.address,
+          accountNumber: initialValue.accountNumber,
+          bankName: initialValue.bankName,
+          documentName: initialValue.documentName ?? "",
+          status: initialValue.status,
+          heir: initialValue.heir ?? { ...emptyHeirData },
+        }
+      : { ...emptyValues, heir: { ...emptyHeirData } });
     setNikError("");
     setSelectedFile(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  }, [open, initialValue]);
+  }
 
   const set = <K extends keyof InvestorFormValues>(
     key: K,

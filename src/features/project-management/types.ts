@@ -153,39 +153,98 @@ export function mapApiProject(apiData: ApiProject): Project {
 }
 
 export function mapToApiProjectPayload(values: ProjectFormValues) {
-  // Helper: Hapus string kosong menjadi null agar lolos validasi format URL Backend
-  const sanitizeStr = (s: string) => (s && s.trim() !== "") ? s.trim() : null;
-  // Helper: Hapus angka 0 dari payload agar lolos validasi "harus > 0"
-  const sanitizeNum = (n: number) => (n > 0) ? n : undefined;
+  // Helper: field hanya disertakan jika benar-benar terisi (bukan null/undefined/kosong)
+  const hasText = (v?: string | null) => (v ?? "").trim() !== "";
+  const hasAmount = (v?: number | null) => (v ?? 0) > 0;
 
-  const payload: any = {
-    // Paksa huruf kecil dan buang spasi/simbol dilarang
+  return {
+    // Field wajib (divalidasi form) — paksa huruf kecil dan buang simbol dilarang
     project_key: values.projectKey.toLowerCase().replace(/[^a-z0-9._-]/g, ""),
     company_id: values.companyId,
-    funding_required: sanitizeNum(values.fundingRequired),
-    net_margin_amount: sanitizeNum(values.netMarginAmount),
-    applicant_profit_share_percentage: values.applicantProfitSharePercentage,
-    applicant_profit_share_amount: sanitizeNum(values.applicantProfitShareAmount),
-    koaci_profit_share_percentage: values.koaciProfitSharePercentage,
-    koaci_profit_share_amount: sanitizeNum(values.koaciProfitShareAmount),
-    koaci_profit_share_beneficiary_percentage: values.koaciProfitShareBeneficiaryPercentage,
-    koaci_profit_share_beneficiary_amount: sanitizeNum(values.koaciProfitShareBeneficiaryAmount),
-    investor_profit_share_percentage: values.investorProfitSharePercentage,
-    investor_profit_share_amount: sanitizeNum(values.investorProfitShareAmount),
-    aggregate_fund_amount: sanitizeNum(values.aggregateFundAmount),
-    disbursement_amount: sanitizeNum(values.disbursementAmount),
-    disbursement_date: sanitizeStr(values.disbursementDate),
-    source_account_number: sanitizeStr(values.sourceAccountNumber),
-    destination_account_number: sanitizeStr(values.destinationAccountNumber),
-    beneficiary_refund_date: sanitizeStr(values.beneficiaryRefundDate),
-    beneficiary_refund_amount: sanitizeNum(values.beneficiaryRefundAmount),
-    beneficiary_repayment_source_account: sanitizeStr(values.beneficiaryRepaymentSourceAccount),
-    beneficiary_repayment_destination_account: sanitizeStr(values.beneficiaryRepaymentDestinationAccount),
-    url_transaction_folder: sanitizeStr(values.urlTransactionFolder),
-    fund_disbursement_official_record: sanitizeStr(values.fundDisbursementOfficialRecord),
+    ...(hasAmount(values.fundingRequired)
+      ? { funding_required: values.fundingRequired }
+      : {}),
+    ...(hasAmount(values.netMarginAmount)
+      ? { net_margin_amount: values.netMarginAmount }
+      : {}),
+    ...(hasAmount(values.applicantProfitSharePercentage)
+      ? {
+          applicant_profit_share_percentage:
+            values.applicantProfitSharePercentage,
+        }
+      : {}),
+    ...(hasAmount(values.applicantProfitShareAmount)
+      ? { applicant_profit_share_amount: values.applicantProfitShareAmount }
+      : {}),
+    ...(hasAmount(values.koaciProfitSharePercentage)
+      ? { koaci_profit_share_percentage: values.koaciProfitSharePercentage }
+      : {}),
+    ...(hasAmount(values.koaciProfitShareAmount)
+      ? { koaci_profit_share_amount: values.koaciProfitShareAmount }
+      : {}),
+    ...(hasAmount(values.koaciProfitShareBeneficiaryPercentage)
+      ? {
+          koaci_profit_share_beneficiary_percentage:
+            values.koaciProfitShareBeneficiaryPercentage,
+        }
+      : {}),
+    ...(hasAmount(values.koaciProfitShareBeneficiaryAmount)
+      ? {
+          koaci_profit_share_beneficiary_amount:
+            values.koaciProfitShareBeneficiaryAmount,
+        }
+      : {}),
+    ...(hasAmount(values.investorProfitSharePercentage)
+      ? {
+          investor_profit_share_percentage:
+            values.investorProfitSharePercentage,
+        }
+      : {}),
+    ...(hasAmount(values.investorProfitShareAmount)
+      ? { investor_profit_share_amount: values.investorProfitShareAmount }
+      : {}),
+    ...(hasAmount(values.aggregateFundAmount)
+      ? { aggregate_fund_amount: values.aggregateFundAmount }
+      : {}),
+    ...(hasAmount(values.disbursementAmount)
+      ? { disbursement_amount: values.disbursementAmount }
+      : {}),
+    ...(hasText(values.disbursementDate)
+      ? { disbursement_date: values.disbursementDate }
+      : {}),
+    ...(hasText(values.sourceAccountNumber)
+      ? { source_account_number: values.sourceAccountNumber }
+      : {}),
+    ...(hasText(values.destinationAccountNumber)
+      ? { destination_account_number: values.destinationAccountNumber }
+      : {}),
+    ...(hasText(values.beneficiaryRefundDate)
+      ? { beneficiary_refund_date: values.beneficiaryRefundDate }
+      : {}),
+    ...(hasAmount(values.beneficiaryRefundAmount)
+      ? { beneficiary_refund_amount: values.beneficiaryRefundAmount }
+      : {}),
+    ...(hasText(values.beneficiaryRepaymentSourceAccount)
+      ? {
+          beneficiary_repayment_source_account:
+            values.beneficiaryRepaymentSourceAccount,
+        }
+      : {}),
+    ...(hasText(values.beneficiaryRepaymentDestinationAccount)
+      ? {
+          beneficiary_repayment_destination_account:
+            values.beneficiaryRepaymentDestinationAccount,
+        }
+      : {}),
+    ...(hasText(values.urlTransactionFolder)
+      ? { url_transaction_folder: values.urlTransactionFolder }
+      : {}),
+    ...(hasText(values.fundDisbursementOfficialRecord)
+      ? {
+          fund_disbursement_official_record:
+            values.fundDisbursementOfficialRecord,
+        }
+      : {}),
     status: values.status,
   };
-
-  Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
-  return payload;
 }

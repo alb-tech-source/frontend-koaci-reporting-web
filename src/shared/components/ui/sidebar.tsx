@@ -666,10 +666,13 @@ const SidebarMenuSkeleton = React.forwardRef<
     showIcon?: boolean;
   }
 >(({ className, showIcon = false, ...props }, ref) => {
-  // Random width between 50 to 90%.
+  // Lebar "acak" yang deterministik (diturunkan dari useId) agar murni
+  // dan stabil antar-render — Math.random tidak boleh dipanggil saat render.
+  const reactId = React.useId();
   const width = React.useMemo(() => {
-    return `${Math.floor(Math.random() * 40) + 50}%`;
-  }, []);
+    const digits = parseInt(reactId.replace(/\D/g, "").slice(-3) || "0", 10);
+    return `${((digits * 37) % 40) + 50}%`;
+  }, [reactId]);
 
   return (
     <div

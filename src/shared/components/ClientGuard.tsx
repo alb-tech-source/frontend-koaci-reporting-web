@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { hasPermission, getCurrentRole } from "@/shared/lib/auth";
 import { AccessDenied, PageSkeleton } from "@/shared/components/ui/feedback";
+import { useHydrated } from "@/shared/hooks/use-hydrated";
 
 interface ClientGuardProps {
   children: ReactNode;
@@ -11,15 +12,13 @@ interface ClientGuardProps {
   fallback?: ReactNode;
 }
 
-export function ClientGuard({ 
-  children, 
-  requirePermission, 
-  requireRole, 
-  fallback 
+export function ClientGuard({
+  children,
+  requirePermission,
+  requireRole,
+  fallback,
 }: Readonly<ClientGuardProps>) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  const mounted = useHydrated();
 
   if (!mounted) return <>{fallback || <PageSkeleton />}</>;
 
