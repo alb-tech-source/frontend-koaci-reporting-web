@@ -52,6 +52,9 @@ interface ApiInvestorRow {
   totalInvestasi?: number;
   status?: string;
   createdAt?: string;
+  investments?: {
+    amount?: string | number;
+  }[];
   heir_name?: string;
   heirName?: string;
   heir_relationship?: string;
@@ -66,6 +69,7 @@ interface ApiInvestorRow {
   heirBankName?: string;
   heir_phone?: string;
   heirPhone?: string;
+  investorDocument?: { document_name?: string }[];
   InvestorDocument?: { document_name?: string }[];
 }
 
@@ -126,16 +130,44 @@ export async function fetchLinkableUsers(): Promise<LinkableUser[]> {
 
 export async function fetchInvestors(): Promise<Investor[]> {
   try {
-    const params = { page: 1, limit: 100 };
+    const PAGE_LIMIT = 100;
+    const investorList: ApiInvestorRow[] = [];
+    let page = 1;
+    let totalPages = 1;
 
-    const { data } = await api.get("/investors", { params });
-    const investorList: ApiInvestorRow[] =
-      data?.data?.items ?? data?.data ?? data ?? [];
+    // Ambil semua halaman agar daftar selalu memuat data investor aktual
+    // terbaru dari API, bukan hanya 100 baris pertama.
+    do {
+      const { data } = await api.get("/investors", {
+        params: { page, limit: PAGE_LIMIT },
+      });
+
+      const payload = data?.data ?? data;
+      const items: ApiInvestorRow[] =
+        payload?.items ?? (Array.isArray(payload) ? payload : []);
+
+      investorList.push(...items);
+
+      const metaTotalPages = payload?.meta?.totalPages;
+      if (metaTotalPages) {
+        totalPages = metaTotalPages;
+      } else {
+        // Fallback bila backend tidak mengirim meta: lanjut selama halaman penuh
+        totalPages = items.length === PAGE_LIMIT ? page + 1 : page;
+      }
+      page += 1;
+    } while (page <= totalPages);
 
     return investorList.map((inv): Investor => {
       const firstName = inv.user?.firstname || "";
       const lastName = inv.user?.lastname || "";
       const combinedName = `${firstName} ${lastName}`.trim();
+
+      // Total investasi = jumlah seluruh amount di array investments (amount string)
+      const totalInvestasi = (inv.investments ?? []).reduce(
+        (sum, investment) => sum + (Number(investment.amount) || 0),
+        0,
+      );
 
       return {
         id: inv.investor_id || inv.id || inv.investorId || "",
@@ -152,7 +184,7 @@ export async function fetchInvestors(): Promise<Investor[]> {
         address: inv.address || "-",
         accountNumber: inv.account_number || inv.accountNumber || "-",
         bankName: inv.bank_name || inv.bankName || "-",
-        totalInvestasi: inv.total_investasi || inv.totalInvestasi || 0,
+        totalInvestasi,
         status: (inv.status || "inactive") as InvestorStatus,
         joinedAt: inv.createdAt
           ? inv.createdAt.slice(0, 10)
@@ -168,7 +200,9 @@ export async function fetchInvestors(): Promise<Investor[]> {
           bankName: inv.heir_bank_name || inv.heirBankName || "",
           phone: inv.heir_phone || inv.heirPhone || "",
         },
-        documentName: inv.InvestorDocument?.[0]?.document_name || undefined,
+        documentName:
+          (inv.investorDocument ?? inv.InvestorDocument)?.[0]?.document_name ||
+          undefined,
       };
     });
   } catch (error) {

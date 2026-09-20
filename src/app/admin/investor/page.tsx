@@ -115,7 +115,11 @@ function InvestorListPage() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return data.filter((i) => {
+    // Terbaru dulu agar pageItems selalu diawali data aktual terbaru dari API
+    const sorted = [...data].sort((a, b) =>
+      b.joinedAt.localeCompare(a.joinedAt),
+    );
+    return sorted.filter((i) => {
       const matchQ =
         !q ||
         i.name.toLowerCase().includes(q) ||
@@ -131,11 +135,13 @@ function InvestorListPage() {
   const createMutation = useMutation({
     mutationFn: async ({ input }: { input: InvestorFormValues }) =>
       createInvestor(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "investors"] });
+    onSuccess: async () => {
+      // Tunggu refetch selesai agar tabel langsung memuat data terbaru
+      await queryClient.invalidateQueries({ queryKey: ["admin", "investors"] });
       queryClient.invalidateQueries({
         queryKey: ["admin", "investors", "linkable-users"],
       });
+      setPage(1);
       toast.success("Investor berhasil ditambahkan!");
       setOpen(false);
     },
@@ -150,8 +156,8 @@ function InvestorListPage() {
       id: string;
       payload: InvestorFormValues;
     }) => updateInvestor(id, payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "investors"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "investors"] });
       toast.success("Data investor berhasil diperbarui!");
       setOpen(false);
       setEditing(null);
@@ -161,8 +167,8 @@ function InvestorListPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteInvestor(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "investors"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "investors"] });
       queryClient.invalidateQueries({
         queryKey: ["admin", "investors", "linkable-users"],
       });
@@ -346,7 +352,7 @@ function InvestorListPage() {
                 variant="outline"
                 size="sm"
                 disabled={currentPage <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                onClick={() => setPage(Math.max(1, currentPage - 1))}
               >
                 Sebelumnya
               </Button>
@@ -357,7 +363,7 @@ function InvestorListPage() {
                 variant="outline"
                 size="sm"
                 disabled={currentPage >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
               >
                 Berikutnya
               </Button>
