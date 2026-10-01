@@ -1,44 +1,56 @@
 "use client";
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { Checkbox } from "@/shared/components/ui/checkbox";
-import { Button } from "@/shared/components/ui/button";
-import { toast } from "sonner";
-import { fetchAllPermissions, updateRolePermissions } from "@/features/settings/api";
-import { hasPermission } from "@/shared/lib/auth";
 
-export default function SettingsPage() {
-  const canManage = hasPermission("users:manage_roles");
-  const { data: allPermissions } = useQuery({ queryKey: ["permissions"], queryFn: fetchAllPermissions });
-  const [selected, setSelected] = useState<string[]>([]);
+import { KeyRound, UserRound } from "lucide-react";
 
-  const saveMutation = useMutation({
-    mutationFn: () => updateRolePermissions("admin", selected),
-    onSuccess: () => toast.success("Pengaturan izin Admin berhasil disimpan."),
-    onError: () => toast.error("Gagal menyimpan pengaturan."),
-  });
+import { ClientGuard } from "@/shared/components/ClientGuard";
+import { PageSkeleton } from "@/shared/components/ui/feedback";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/shared/components/ui/tabs";
 
-  if (!canManage) return <p className="text-sm text-muted-foreground">Tidak memiliki akses.</p>;
+import { ChangePasswordForm } from "@/features/settings/ChangePasswordForm";
+import { ProfileForm } from "@/features/settings/ProfileForm";
 
+// Pengaturan akun sendiri — tersedia untuk semua user yang login
+export default function AdminSettingsRoute() {
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Pengaturan Izin Role Admin</h1>
-      <div className="grid grid-cols-2 gap-3 rounded-lg border p-4">
-        {allPermissions?.map((p) => (
-          <label key={p.permission_id} className="flex items-center gap-2">
-            <Checkbox
-              checked={selected.includes(p.permission_id)}
-              onCheckedChange={(c) =>
-                setSelected((prev) => c ? [...prev, p.permission_id] : prev.filter((id) => id !== p.permission_id))
-              }
-            />
-            {p.permission_key}
-          </label>
-        ))}
-      </div>
-      <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-        Simpan Pengaturan
-      </Button>
+    <ClientGuard fallback={<PageSkeleton />}>
+      <SettingsPage />
+    </ClientGuard>
+  );
+}
+
+function SettingsPage() {
+  return (
+    <div className="mx-auto max-w-4xl space-y-6">
+      <header>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          Pengaturan Akun
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Kelola profil dan keamanan akun Anda.
+        </p>
+      </header>
+
+      <Tabs defaultValue="profil">
+        <TabsList>
+          <TabsTrigger value="profil" className="gap-1.5">
+            <UserRound className="h-4 w-4" /> Profil
+          </TabsTrigger>
+          <TabsTrigger value="keamanan" className="gap-1.5">
+            <KeyRound className="h-4 w-4" /> Ganti Password
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="profil" className="mt-4">
+          <ProfileForm />
+        </TabsContent>
+        <TabsContent value="keamanan" className="mt-4">
+          <ChangePasswordForm />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

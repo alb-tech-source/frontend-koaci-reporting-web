@@ -84,6 +84,7 @@ function InvestmentListPage() {
     mutationFn: (values: InvestmentFormValues) => createInvestment(values),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "investments"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "projects", "fund-collected"] });
       toast.success("Investasi berhasil ditambahkan.");
       setFormOpen(false);
       setPage(1);
@@ -95,6 +96,7 @@ function InvestmentListPage() {
     mutationFn: (values: InvestmentFormValues) => updateInvestment(editing!.projectInvestmentId, values),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "investments"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "projects", "fund-collected"] });
       toast.success("Perubahan investasi tersimpan.");
       setFormOpen(false);
     },
@@ -105,6 +107,7 @@ function InvestmentListPage() {
     mutationFn: (id: string) => deleteInvestment(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "investments"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "projects", "fund-collected"] });
       toast.success("Investasi dihapus.");
       setDeleteTarget(null);
     },

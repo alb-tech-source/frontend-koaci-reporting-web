@@ -9,15 +9,6 @@ export interface Project {
 
   fundingRequired: number;
   netMarginAmount: number;
-  applicantProfitSharePercentage: number;
-  applicantProfitShareAmount: number;
-  koaciProfitSharePercentage: number;
-  koaciProfitShareAmount: number;
-  koaciProfitShareBeneficiaryPercentage: number;
-  koaciProfitShareBeneficiaryAmount: number;
-  investorProfitSharePercentage: number;
-  investorProfitShareAmount: number;
-  aggregateFundAmount: number;
   disbursementAmount: number;
 
   disbursementDate: string;
@@ -76,31 +67,24 @@ export const projectStatusOptions: ProjectStatus[] = [
 ];
 
 // --- API MAPPER ---
+// Mengikuti model Project di Backend/prisma/schema.prisma (Decimal dikirim sebagai string).
+// Bagi hasil tidak lagi disimpan di Project — dihitung di modul ProjectSettlement.
 export interface ApiProject {
   project_id: string;
   project_key: string;
   company_id: string;
   funding_required: string | number;
-  net_margin_amount: string | number;
-  applicant_profit_share_percentage: string | number;
-  applicant_profit_share_amount: string | number;
-  koaci_profit_share_percentage: string | number;
-  koaci_profit_share_amount: string | number;
-  koaci_profit_share_beneficiary_percentage: string | number;
-  koaci_profit_share_beneficiary_amount: string | number;
-  investor_profit_share_percentage: string | number;
-  investor_profit_share_amount: string | number;
-  aggregate_fund_amount: string | number;
-  disbursement_amount: string | number;
+  net_margin_amount: string | number | null;
+  disbursement_amount: string | number | null;
   disbursement_date: string | null;
-  source_account_number: string;
-  destination_account_number: string;
+  source_account_number: string | null;
+  destination_account_number: string | null;
   beneficiary_refund_date: string | null;
-  beneficiary_refund_amount: string | number;
-  beneficiary_repayment_source_account: string;
-  beneficiary_repayment_destination_account: string;
-  url_transaction_folder: string;
-  fund_disbursement_official_record: string;
+  beneficiary_refund_amount: string | number | null;
+  beneficiary_repayment_source_account: string | null;
+  beneficiary_repayment_destination_account: string | null;
+  url_transaction_folder: string | null;
+  fund_disbursement_official_record: string | null;
   status: ProjectStatus;
   createdAt: string;
   updatedAt: string;
@@ -117,22 +101,6 @@ export function mapApiProject(apiData: ApiProject): Project {
     companyName: apiData.company?.company_name || "-",
     fundingRequired: Number(apiData.funding_required) || 0,
     netMarginAmount: Number(apiData.net_margin_amount) || 0,
-    applicantProfitSharePercentage:
-      Number(apiData.applicant_profit_share_percentage) || 0,
-    applicantProfitShareAmount:
-      Number(apiData.applicant_profit_share_amount) || 0,
-    koaciProfitSharePercentage:
-      Number(apiData.koaci_profit_share_percentage) || 0,
-    koaciProfitShareAmount: Number(apiData.koaci_profit_share_amount) || 0,
-    koaciProfitShareBeneficiaryPercentage:
-      Number(apiData.koaci_profit_share_beneficiary_percentage) || 0,
-    koaciProfitShareBeneficiaryAmount:
-      Number(apiData.koaci_profit_share_beneficiary_amount) || 0,
-    investorProfitSharePercentage:
-      Number(apiData.investor_profit_share_percentage) || 0,
-    investorProfitShareAmount:
-      Number(apiData.investor_profit_share_amount) || 0,
-    aggregateFundAmount: Number(apiData.aggregate_fund_amount) || 0,
     disbursementAmount: Number(apiData.disbursement_amount) || 0,
     disbursementDate: apiData.disbursement_date || "",
     sourceAccountNumber: apiData.source_account_number || "",
@@ -166,45 +134,6 @@ export function mapToApiProjectPayload(values: ProjectFormValues) {
       : {}),
     ...(hasAmount(values.netMarginAmount)
       ? { net_margin_amount: values.netMarginAmount }
-      : {}),
-    ...(hasAmount(values.applicantProfitSharePercentage)
-      ? {
-          applicant_profit_share_percentage:
-            values.applicantProfitSharePercentage,
-        }
-      : {}),
-    ...(hasAmount(values.applicantProfitShareAmount)
-      ? { applicant_profit_share_amount: values.applicantProfitShareAmount }
-      : {}),
-    ...(hasAmount(values.koaciProfitSharePercentage)
-      ? { koaci_profit_share_percentage: values.koaciProfitSharePercentage }
-      : {}),
-    ...(hasAmount(values.koaciProfitShareAmount)
-      ? { koaci_profit_share_amount: values.koaciProfitShareAmount }
-      : {}),
-    ...(hasAmount(values.koaciProfitShareBeneficiaryPercentage)
-      ? {
-          koaci_profit_share_beneficiary_percentage:
-            values.koaciProfitShareBeneficiaryPercentage,
-        }
-      : {}),
-    ...(hasAmount(values.koaciProfitShareBeneficiaryAmount)
-      ? {
-          koaci_profit_share_beneficiary_amount:
-            values.koaciProfitShareBeneficiaryAmount,
-        }
-      : {}),
-    ...(hasAmount(values.investorProfitSharePercentage)
-      ? {
-          investor_profit_share_percentage:
-            values.investorProfitSharePercentage,
-        }
-      : {}),
-    ...(hasAmount(values.investorProfitShareAmount)
-      ? { investor_profit_share_amount: values.investorProfitShareAmount }
-      : {}),
-    ...(hasAmount(values.aggregateFundAmount)
-      ? { aggregate_fund_amount: values.aggregateFundAmount }
       : {}),
     ...(hasAmount(values.disbursementAmount)
       ? { disbursement_amount: values.disbursementAmount }

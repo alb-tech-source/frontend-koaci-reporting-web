@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type { ReactNode } from "react";
 
 import { Button } from "@/shared/components/ui/button";
@@ -25,7 +25,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/shared/components/ui/tabs";
-import { formatIDR } from "@/shared/lib/format";
 
 import type {
   CompanyOption,
@@ -40,15 +39,6 @@ const emptyValues: ProjectFormValues = {
   companyId: "",
   fundingRequired: 0,
   netMarginAmount: 0,
-  applicantProfitSharePercentage: 0,
-  applicantProfitShareAmount: 0,
-  koaciProfitSharePercentage: 0,
-  koaciProfitShareAmount: 0,
-  koaciProfitShareBeneficiaryPercentage: 0,
-  koaciProfitShareBeneficiaryAmount: 0,
-  investorProfitSharePercentage: 0,
-  investorProfitShareAmount: 0,
-  aggregateFundAmount: 0,
   disbursementAmount: 0,
   disbursementDate: "",
   sourceAccountNumber: "",
@@ -108,14 +98,6 @@ export function ProjectFormDialog({
     value: ProjectFormValues[K],
   ) => setValues((prev) => ({ ...prev, [key]: value }));
 
-  const summary = useMemo(
-    () => ({
-      total: values.aggregateFundAmount,
-      investorShare: values.investorProfitSharePercentage,
-    }),
-    [values.aggregateFundAmount, values.investorProfitSharePercentage],
-  );
-
   const handleSubmit = () => {
     if (!values.projectKey.trim()) {
       setError("Kode proyek wajib diisi.");
@@ -143,15 +125,6 @@ export function ProjectFormDialog({
           <DialogDescription>
             Lengkapi data proyek pembiayaan sesuai dokumen akad.
           </DialogDescription>
-          <div className="mt-3 rounded-xl bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">
-              Total Dana: {formatIDR(summary.total)}
-            </span>
-            <span className="mx-2">|</span>
-            <span className="font-medium text-foreground">
-              Bagi Hasil Investor: {summary.investorShare}%
-            </span>
-          </div>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto p-6">
@@ -225,53 +198,6 @@ export function ProjectFormDialog({
                   label="Margin Bersih"
                   value={values.netMarginAmount}
                   onChange={(v) => set("netMarginAmount", v)}
-                />
-                <NumberField
-                  label="Bagi Hasil Pebisnis (%)"
-                  value={values.applicantProfitSharePercentage}
-                  onChange={(v) => set("applicantProfitSharePercentage", v)}
-                />
-                <NumberField
-                  label="Bagi Hasil Pebisnis (Rp)"
-                  value={values.applicantProfitShareAmount}
-                  onChange={(v) => set("applicantProfitShareAmount", v)}
-                />
-                <NumberField
-                  label="Bagi Hasil Koaci (%)"
-                  value={values.koaciProfitSharePercentage}
-                  onChange={(v) => set("koaciProfitSharePercentage", v)}
-                />
-                <NumberField
-                  label="Bagi Hasil Koaci (Rp)"
-                  value={values.koaciProfitShareAmount}
-                  onChange={(v) => set("koaciProfitShareAmount", v)}
-                />
-                <NumberField
-                  label="Bagi Hasil Beneficiary (%)"
-                  value={values.koaciProfitShareBeneficiaryPercentage}
-                  onChange={(v) =>
-                    set("koaciProfitShareBeneficiaryPercentage", v)
-                  }
-                />
-                <NumberField
-                  label="Bagi Hasil Beneficiary (Rp)"
-                  value={values.koaciProfitShareBeneficiaryAmount}
-                  onChange={(v) => set("koaciProfitShareBeneficiaryAmount", v)}
-                />
-                <NumberField
-                  label="Bagi Hasil Investor (%)"
-                  value={values.investorProfitSharePercentage}
-                  onChange={(v) => set("investorProfitSharePercentage", v)}
-                />
-                <NumberField
-                  label="Bagi Hasil Investor (Rp)"
-                  value={values.investorProfitShareAmount}
-                  onChange={(v) => set("investorProfitShareAmount", v)}
-                />
-                <NumberField
-                  label="Dana Terkumpul"
-                  value={values.aggregateFundAmount}
-                  onChange={(v) => set("aggregateFundAmount", v)}
                 />
                 <NumberField
                   label="Dana Disalurkan"

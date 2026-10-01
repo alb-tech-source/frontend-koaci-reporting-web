@@ -14,6 +14,8 @@ import {
   FolderKanban,
   Wallet,
   FileText,
+  HandCoins,
+  Settings,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useHydrated } from "@/shared/hooks/use-hydrated";
@@ -78,6 +80,7 @@ export const defaultAdminNav: TitleNavItem[] = [
     nav: [
       { to: "/admin/investasi", label: "Investasi", icon: Wallet },
       { to: "/admin/laporan", label: "Laporan", icon: FileText },
+      { to: "/admin/settlement", label: "Settlement", icon: HandCoins },
     ],
   },
   {
@@ -85,6 +88,10 @@ export const defaultAdminNav: TitleNavItem[] = [
     nav: [
       { to: "/admin/activity-log", label: "Log Aktivitas", icon: Activity },
     ],
+  },
+  {
+    title: "Akun",
+    nav: [{ to: "/admin/settings", label: "Pengaturan", icon: Settings }],
   },
 ];
 
@@ -107,6 +114,10 @@ export function AdminShell({
   const canViewUsers =
     user?.role.role_name === "superadmin" ||
     (user?.role.permissions?.includes("users:read:any") ?? false);
+  const canViewSettlements =
+    user?.role.role_name === "superadmin" ||
+    (user?.role.permissions?.includes("project_settlements:read:any") ??
+      false);
 
   const mounted = useHydrated();
 
@@ -117,6 +128,10 @@ export function AdminShell({
       nav: group.nav.filter((item) => {
         if (item.to === "/admin/activity-log") {
           return currentRole === "bod";
+        }
+
+        if (item.to === "/admin/settlement") {
+          return canViewSettlements;
         }
 
         if (item.to === "/admin/users") {
@@ -162,19 +177,25 @@ export function AdminShell({
                 <Bell className="h-4 w-4" />
               </Button> */}
               <div className="hidden items-center gap-2 sm:flex">
-                <div className="text-right leading-tight">
-                  <p className="text-sm font-medium text-foreground">
-                    {displayName}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {displayEmail}
-                  </p>
-                </div>
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-gradient-brand text-brand-foreground text-xs">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
+                <Link
+                  href="/admin/settings"
+                  title="Pengaturan akun"
+                  className="flex items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-muted"
+                >
+                  <div className="text-right leading-tight">
+                    <p className="text-sm font-medium text-foreground">
+                      {displayName}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {displayEmail}
+                    </p>
+                  </div>
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-gradient-brand text-brand-foreground text-xs">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                </Link>
 
                 <AlertDialog>
                   <AlertDialogTrigger asChild>

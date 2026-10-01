@@ -16,6 +16,41 @@ export async function fetchProjects(): Promise<Project[]> {
   return items.map(mapApiProject);
 }
 
+/**
+ * Dana terkumpul per proyek = SUM(amount) ProjectInvestment, dikelompokkan per project_id.
+ * Kolom aggregate_fund_amount sudah dihapus dari tabel Project, jadi nilainya diturunkan
+ * dari data investasi (sama seperti principal_amount pada settlement di backend).
+ */
+export async function fetchProjectFundCollected(): Promise<
+  Record<string, number>
+> {
+  const PAGE_LIMIT = 100;
+  const totals: Record<string, number> = {};
+  let page = 1;
+  let totalPages = 1;
+
+  do {
+    const { data } = await api.get("/project-investments", {
+      params: { page, limit: PAGE_LIMIT },
+    });
+    const payload = data?.data ?? data;
+    const items: { project_id?: string; amount?: string | number }[] =
+      payload?.items ?? (Array.isArray(payload) ? payload : []);
+
+    for (const item of items) {
+      if (!item.project_id) continue;
+      totals[item.project_id] =
+        (totals[item.project_id] ?? 0) + (Number(item.amount) || 0);
+    }
+
+    const metaTotalPages = payload?.meta?.totalPages ?? data?.meta?.totalPages;
+    totalPages = metaTotalPages ?? (items.length === PAGE_LIMIT ? page + 1 : page);
+    page += 1;
+  } while (page <= totalPages);
+
+  return totals;
+}
+
 export async function fetchProject(projectId: string): Promise<Project> {
   const { data } = await api.get(`/projects/${projectId}`);
   return mapApiProject(data?.data);

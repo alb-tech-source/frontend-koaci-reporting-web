@@ -2,7 +2,6 @@ import { ExternalLink } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Badge } from "@/shared/components/ui/badge";
-import { Progress } from "@/shared/components/ui/progress";
 import {
   Sheet,
   SheetContent,
@@ -15,19 +14,19 @@ import { formatDateID, formatIDR } from "@/shared/lib/format";
 
 import type { Project } from "./types";
 import { projectStatusLabel } from "./types";
-import {
-  fundingProgress,
-  projectStatusBadgeClass,
-} from "./utils";
+import { projectStatusBadgeClass } from "./utils";
 
 interface ProjectDetailSheetProps {
   project: Project | null;
+  /** SUM amount investasi proyek; null bila data investasi tidak tersedia */
+  collectedAmount: number | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export function ProjectDetailSheet({
   project,
+  collectedAmount,
   open,
   onOpenChange,
 }: Readonly<ProjectDetailSheetProps>) {
@@ -69,27 +68,6 @@ export function ProjectDetailSheet({
                     value={formatDateID(project.createdAt)}
                   />
                 </div>
-                <div className="mt-4 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">
-                      Progres pendanaan
-                    </span>
-                    <span className="font-medium text-foreground">
-                      {fundingProgress(
-                        project.aggregateFundAmount,
-                        project.fundingRequired,
-                      )}
-                      %
-                    </span>
-                  </div>
-                  <Progress
-                    value={fundingProgress(
-                      project.aggregateFundAmount,
-                      project.fundingRequired,
-                    )}
-                    className="h-2"
-                  />
-                </div>
               </Section>
 
               <Section title="Struktur Keuangan">
@@ -103,30 +81,8 @@ export function ProjectDetailSheet({
                     value={formatIDR(project.netMarginAmount)}
                   />
                   <StatBox
-                    label="Bagi Hasil Pebisnis"
-                    value={formatIDR(project.applicantProfitShareAmount)}
-                    hint={`${project.applicantProfitSharePercentage}%`}
-                  />
-                  <StatBox
-                    label="Bagi Hasil Koaci"
-                    value={formatIDR(project.koaciProfitShareAmount)}
-                    hint={`${project.koaciProfitSharePercentage}%`}
-                  />
-                  <StatBox
-                    label="Bagi Hasil Koaci (Beneficiary)"
-                    value={formatIDR(
-                      project.koaciProfitShareBeneficiaryAmount,
-                    )}
-                    hint={`${project.koaciProfitShareBeneficiaryPercentage}%`}
-                  />
-                  <StatBox
-                    label="Bagi Hasil Investor"
-                    value={formatIDR(project.investorProfitShareAmount)}
-                    hint={`${project.investorProfitSharePercentage}%`}
-                  />
-                  <StatBox
                     label="Dana Terkumpul"
-                    value={formatIDR(project.aggregateFundAmount)}
+                    value={formatIDR(collectedAmount)}
                   />
                   <StatBox
                     label="Dana Disalurkan"

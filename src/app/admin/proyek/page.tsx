@@ -2,12 +2,14 @@
 
 import {
   queryOptions,
+  useQuery,
   useSuspenseQuery,
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
 import {
   Eye,
+  HandCoins,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -16,6 +18,7 @@ import {
   FileText,
   FolderKanban,
 } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -28,7 +31,6 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import { Input } from "@/shared/components/ui/input";
-import { Progress } from "@/shared/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -67,6 +69,7 @@ import {
   createProject,
   deleteProject,
   fetchCompanyOptions,
+  fetchProjectFundCollected,
   fetchProjects,
   updateProject,
 } from "@/features/project-management/api";
@@ -79,16 +82,25 @@ import {
   projectStatusLabel,
   projectStatusOptions,
 } from "@/features/project-management/types";
+import { projectStatusBadgeClass } from "@/features/project-management/utils";
+import { settlementsQuery } from "@/features/settlement/queries";
+import type { ProjectSettlement } from "@/features/settlement/types";
 import {
-  fundingProgress,
-  projectStatusBadgeClass,
-} from "@/features/project-management/utils";
+  settlementStatusBadgeClass,
+  settlementStatusLabel,
+} from "@/features/settlement/utils";
 import { hasPermission } from "@/shared/lib/auth";
 import { formatDateID, formatIDR } from "@/shared/lib/format";
 
 const projectsQuery = queryOptions({
   queryKey: ["admin", "projects"],
   queryFn: () => fetchProjects(),
+});
+
+// Dana terkumpul diturunkan dari data investasi (aggregate_fund_amount sudah tidak ada di tabel Project)
+const fundCollectedQuery = queryOptions({
+  queryKey: ["admin", "projects", "fund-collected"],
+  queryFn: fetchProjectFundCollected,
 });
 
 const companiesQuery = queryOptions({
@@ -113,6 +125,28 @@ function ProjectsPage() {
   const queryClient = useQueryClient();
   const { data: projects } = useSuspenseQuery(projectsQuery);
   const { data: companies } = useSuspenseQuery(companiesQuery);
+  // Non-suspense: role tanpa izin baca investasi tetap bisa membuka halaman proyek
+  const { data: fundCollected } = useQuery({
+    ...fundCollectedQuery,
+    enabled: hasPermission("project_investments:read:any"),
+  });
+  const collectedOf = (projectId: string): number | null =>
+    fundCollected ? (fundCollected[projectId] ?? 0) : null;
+
+  // Settlement = tahap penyelesaian proyek; dipakai untuk tombol menuju halaman settlement
+  const canViewSettlement = hasPermission("project_settlements:read:any");
+  const canCreateSettlement = hasPermission("project_settlements:create:any");
+  const { data: settlements } = useQuery({
+    ...settlementsQuery,
+    enabled: canViewSettlement,
+  });
+  const settlementByProject = useMemo(
+    () =>
+      new Map<string, ProjectSettlement>(
+        (settlements ?? []).map((s) => [s.projectId, s]),
+      ),
+    [settlements],
+  );
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | "all">(
@@ -291,7 +325,6 @@ function ProjectsPage() {
                     <TableHead>Perusahaan</TableHead>
                     <TableHead>Target Dana</TableHead>
                     <TableHead>Dana Terkumpul</TableHead>
-                    <TableHead className="w-40">Progress</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="w-16 text-right">Aksi</TableHead>
                   </TableRow>
@@ -299,7 +332,7 @@ function ProjectsPage() {
                 <TableBody>
                   {pageItems.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="h-64">
+                      <TableCell colSpan={6} className="h-64">
                         <EmptyStateGeneral
                           title="Belum ada proyek"
                           description="Tambahkan proyek pembiayaan pertama untuk mulai mengelola pendanaan."
@@ -324,10 +357,8 @@ function ProjectsPage() {
                     </TableRow>
                   ) : (
                     pageItems.map((p) => {
-                      const progress = fundingProgress(
-                        p.aggregateFundAmount,
-                        p.fundingRequired,
-                      );
+                      const collected = collectedOf(p.projectId);
+                      const settlement = settlementByProject.get(p.projectId);
                       return (
                         <TableRow key={p.projectId}>
                           <TableCell>
@@ -345,15 +376,7 @@ function ProjectsPage() {
                             {formatIDR(p.fundingRequired)}
                           </TableCell>
                           <TableCell className="text-sm text-foreground">
-                            {formatIDR(p.aggregateFundAmount)}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Progress value={progress} className="h-2 w-20" />
-                              <span className="text-xs font-medium text-muted-foreground">
-                                {progress}%
-                              </span>
-                            </div>
+                            {formatIDR(collected)}
                           </TableCell>
                           <TableCell>
                             <Badge
@@ -361,6 +384,17 @@ function ProjectsPage() {
                             >
                               {projectStatusLabel[p.status]}
                             </Badge>
+                            {settlement ? (
+                              <Badge
+                                className={cn(
+                                  "mt-1 block w-fit",
+                                  settlementStatusBadgeClass(settlement.status),
+                                )}
+                              >
+                                Settlement:{" "}
+                                {settlementStatusLabel[settlement.status]}
+                              </Badge>
+                            ) : null}
                           </TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>
@@ -382,6 +416,19 @@ function ProjectsPage() {
                                   <FileText className="mr-2 h-4 w-4" /> Lihat
                                   Dokumen
                                 </DropdownMenuItem>
+                                {settlement ||
+                                (canViewSettlement && canCreateSettlement) ? (
+                                  <DropdownMenuItem asChild>
+                                    <Link
+                                      href={`/admin/settlement?project=${p.projectId}`}
+                                    >
+                                      <HandCoins className="mr-2 h-4 w-4" />
+                                      {settlement
+                                        ? "Lihat Settlement"
+                                        : "Selesaikan Proyek (Settlement)"}
+                                    </Link>
+                                  </DropdownMenuItem>
+                                ) : null}
                                 {canUpdate && (
                                   <DropdownMenuItem
                                     onClick={() => {
@@ -471,6 +518,7 @@ function ProjectsPage() {
 
       <ProjectDetailSheet
         project={detail}
+        collectedAmount={detail ? collectedOf(detail.projectId) : null}
         open={detail !== null}
         onOpenChange={(o) => !o && setDetail(null)}
       />

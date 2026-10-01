@@ -10,6 +10,16 @@ export const actionLabel: Record<string, string> = {
   INVESTOR_CREATE: "Tambah Investor",
   INVESTOR_UPDATE: "Ubah Investor",
   INVESTOR_STATUS_UPDATE: "Ubah Status Investor",
+  PROJECT_SETTLEMENT_CREATE: "Buat Settlement",
+  PROJECT_SETTLEMENT_UPDATE: "Ubah Settlement",
+  PROJECT_SETTLEMENT_DELETE: "Hapus Settlement",
+  PROJECT_SETTLEMENT_APPROVE: "Setujui Settlement",
+  PROJECT_SETTLEMENT_REJECT: "Tolak Settlement",
+  INVESTOR_SETTLEMENT_CREATE: "Buat Settlement Investor",
+  INVESTOR_SETTLEMENT_UPDATE: "Ubah Settlement Investor",
+  INVESTOR_SETTLEMENT_DELETE: "Hapus Settlement Investor",
+  INVESTOR_SETTLEMENT_APPROVE: "Setujui Settlement Investor",
+  INVESTOR_SETTLEMENT_REJECT: "Tolak Settlement Investor",
 };
 
 export function getActionLabel(action: string): string {
@@ -18,10 +28,18 @@ export function getActionLabel(action: string): string {
 
 export function actionBadgeClass(action: string): string {
   // Gunakan .includes agar lebih fleksibel
-  if (action.includes("DELETE") || action.includes("FAILED")) {
+  if (
+    action.includes("DELETE") ||
+    action.includes("FAILED") ||
+    action.includes("REJECT")
+  ) {
     return "border-transparent bg-danger/10 text-danger";
   }
-  if (action.includes("CREATE") || action.includes("SUCCESS")) {
+  if (
+    action.includes("CREATE") ||
+    action.includes("SUCCESS") ||
+    action.includes("APPROVE")
+  ) {
     return "border-transparent bg-success/15 text-success";
   }
   if (action.includes("UPDATE") || action.includes("TOGGLE")) {

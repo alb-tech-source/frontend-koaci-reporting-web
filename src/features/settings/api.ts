@@ -5,12 +5,35 @@ export async function fetchAllPermissions() {
   return data.data as { permission_id: string; permission_key: string }[];
 }
 
-export async function fetchRolePermissions(roleName: string) {
-  const { data } = await api.get(`/roles/${roleName}/permissions`);
-  return data.data;
+// --- AKUN SENDIRI (halaman Pengaturan) ---
+
+export interface UpdateProfilePayload {
+  firstname?: string;
+  lastname?: string;
+  email?: string;
 }
 
-export async function updateRolePermissions(roleName: string, permissionIds: string[]) {
-  const { data } = await api.put(`/roles/${roleName}/permissions`, { permission_ids: permissionIds });
+/** Update profil sendiri lewat PUT /users/:id (izin users:update:own atau :any). */
+export async function updateMyProfile(
+  userId: string,
+  payload: UpdateProfilePayload,
+): Promise<{ requiresEmailVerification: boolean }> {
+  const { data } = await api.put(`/users/${userId}`, payload);
+  return {
+    requiresEmailVerification: Boolean(data?.data?.requiresEmailVerification),
+  };
+}
+
+export async function changePassword(payload: {
+  currentPassword: string;
+  newPassword: string;
+}) {
+  const { data } = await api.post("/auth/change-password", payload);
   return data;
+}
+
+/** Kirim link verifikasi ke email user yang sedang login (tanpa body). */
+export async function sendMyVerifyEmail(): Promise<string> {
+  const { data } = await api.post("/auth/send-verify-email");
+  return data?.message ?? "Email verifikasi telah dikirim.";
 }
