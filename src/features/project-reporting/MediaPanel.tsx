@@ -10,7 +10,8 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { getErrorMessage } from "@/shared/lib/axios";
 import { deleteReportingMedia, fetchReportingMedia, getMediaDownloadUrl, uploadReportingMedia } from "./api";
 import type { ReportingMediaType } from "./types";
-import { formatDateID, formatFileSize, mediaTypeLabel } from "./utils";
+import { formatFileSize, mediaTypeLabel } from "./utils";
+import { formatDateID } from "@/shared/lib/format";
 
 interface Props {
   reportingId: string;

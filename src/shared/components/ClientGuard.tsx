@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { hasPermission, getCurrentRole } from "@/shared/lib/auth";
 import { AccessDenied, PageSkeleton } from "@/shared/components/ui/feedback";
 import { useHydrated } from "@/shared/hooks/use-hydrated";
@@ -42,5 +42,9 @@ export function ClientGuard({
     return <AccessDenied />;
   }
 
-  return <>{children}</>;
+ return (
+    <Suspense fallback={fallback ?? <PageSkeleton />}>
+      {children}
+    </Suspense>
+  );
 }

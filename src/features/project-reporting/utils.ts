@@ -1,20 +1,11 @@
 import type { ReportingMediaType } from "./types";
 
-export { formatDateID, formatIDR } from "@/shared/lib/format";
-
 export function progressLabel(pct: number): string {
   if (pct >= 100) return "Selesai";
   if (pct >= 75) return "Hampir Selesai";
   if (pct >= 50) return "Setengah Jalan";
   if (pct >= 25) return "Berjalan";
   return "Awal";
-}
-
-export function progressColorClass(pct: number): string {
-  if (pct >= 100) return "bg-success";
-  if (pct >= 60) return "bg-brand";
-  if (pct >= 30) return "bg-warning";
-  return "bg-danger";
 }
 
 export function progressIndicatorClass(pct: number): string {

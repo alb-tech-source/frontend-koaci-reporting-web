@@ -10,7 +10,6 @@ import type {
   MediaUploadValues,
 } from "./types";
 
-// Bentuk mentah respons /project-reportings (menampung variasi snake_case/camelCase)
 interface ApiReporting {
   project_reporting_id?: string;
   id?: string;
@@ -171,9 +170,11 @@ export async function deleteReporting(id: string): Promise<void> {
 export async function fetchReportingMedia(
   reportingId: string,
 ): Promise<ProjectReportingMedia[]> {
-  const { data } = await api.get(`/project-reportings/${reportingId}`);
-  const report = mapReporting(data?.data ?? data);
-  return report.projectReportingMedia;
+  const { data } = await api.get(`/project-reporting-media/reporting/${reportingId}`, {
+    params: { page: 1, limit: 50 },
+  });
+  const items = data?.data?.items ?? data?.data ?? data ?? [];
+  return items.map(mapMedia);
 }
 
 export async function uploadReportingMedia(

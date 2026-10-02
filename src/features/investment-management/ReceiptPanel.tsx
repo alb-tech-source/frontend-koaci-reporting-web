@@ -54,9 +54,12 @@ export function ReceiptPanel({
 
   const handleDeleteClick = async () => {
     if (!receipt) return;
+
     setIsDeleting(true);
     try {
       await onDelete(receipt.receiptDocumentId);
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Gagal menghapus kwitansi."));
     } finally {
       setIsDeleting(false);
     }

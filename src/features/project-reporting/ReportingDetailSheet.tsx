@@ -5,7 +5,8 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 
 import { MediaPanel } from "./MediaPanel";
 import type { ProjectReporting } from "./types";
-import { formatDateID, formatIDR, progressIndicatorClass, progressLabel } from "./utils";
+import { progressIndicatorClass, progressLabel } from "./utils";
+import { formatDateID, formatIDR } from "@/shared/lib/format";
 
 interface Props {
   reporting: ProjectReporting | null;

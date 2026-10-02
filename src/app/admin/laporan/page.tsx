@@ -23,7 +23,8 @@ import { createReporting, deleteReporting, fetchProjectOptions, fetchReportings,
 import { ReportingDetailSheet } from "@/features/project-reporting/ReportingDetailSheet";
 import { ReportingFormDialog } from "@/features/project-reporting/ReportingFormDialog";
 import type { ProjectReporting, ReportingFormValues, ReportingUpdateValues } from "@/features/project-reporting/types";
-import { formatDateID, formatIDR, progressIndicatorClass } from "@/features/project-reporting/utils";
+import { formatDateID, formatIDR } from "@/shared/lib/format";
+import { progressIndicatorClass } from "@/features/project-reporting/utils";
 
 const reportingsQuery = queryOptions({
   queryKey: ["admin", "reportings"],

@@ -157,8 +157,20 @@ export function mapToApiProjectPayload(values: ProjectFormValues) {
   const hasText = (v?: string | null) => (v ?? "").trim() !== "";
   const hasAmount = (v?: number | null) => (v ?? 0) > 0;
 
+  // 🔥 Logika Automasi Status
+  let finalStatus = values.status;
+  const aggregate = values.aggregateFundAmount ?? 0;
+  const required = values.fundingRequired ?? 0;
+
+  if (required > 0) {
+    if (finalStatus === "open" && aggregate >= required) {
+      finalStatus = "target_achieved";
+    } else if (finalStatus === "target_achieved" && aggregate < required) {
+      finalStatus = "open";
+    }
+  }
+
   return {
-    // Field wajib (divalidasi form) — paksa huruf kecil dan buang simbol dilarang
     project_key: values.projectKey.toLowerCase().replace(/[^a-z0-9._-]/g, ""),
     company_id: values.companyId,
     ...(hasAmount(values.fundingRequired)
@@ -245,6 +257,8 @@ export function mapToApiProjectPayload(values: ProjectFormValues) {
             values.fundDisbursementOfficialRecord,
         }
       : {}),
-    status: values.status,
+    
+    // Gunakan finalStatus yang sudah divalidasi oleh sistem
+    status: finalStatus,
   };
 }
