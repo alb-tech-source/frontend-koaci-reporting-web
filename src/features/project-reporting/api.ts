@@ -1,4 +1,5 @@
 import api from "@/shared/lib/axios";
+import { fetchAllPages } from "@/shared/lib/fetchAllPages";
 import { uploadFile } from "@/shared/lib/upload";
 import type {
   ProjectReporting,
@@ -113,24 +114,18 @@ function mapMedia(raw: ApiReportingMedia): ProjectReportingMedia {
 // ----------------------------------------------------
 
 export async function fetchReportings(): Promise<ProjectReporting[]> {
-  const { data } = await api.get("/project-reportings", {
-    params: { page: 1, limit: 100 },
-  });
-  const items = data?.data?.items ?? data?.data ?? data ?? [];
+  const items = await fetchAllPages<ApiReporting>("/project-reportings");
   return items.map(mapReporting);
 }
 
 export async function fetchProjectOptions(): Promise<ReportingProjectOption[]> {
-  const { data } = await api.get("/projects", {
-    params: { page: 1, limit: 100, status: "open" },
-  });
-  const items: Array<{
+  const items = await fetchAllPages<{
     project_id?: string;
     id?: string;
     project_key?: string;
     projectKey?: string;
     company?: { company_name?: string; companyName?: string };
-  }> = data?.data?.items ?? data?.data ?? data ?? [];
+  }>("/projects", { status: "open" });
   return items
     .map(
       (p): ReportingProjectOption => ({

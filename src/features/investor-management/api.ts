@@ -8,6 +8,7 @@ import type {
   LinkableUser,
 } from "./types";
 import api from "@/shared/lib/axios";
+import { fetchAllPages } from "@/shared/lib/fetchAllPages";
 import { uploadFile } from "@/shared/lib/upload";
 
 // Bentuk mentah baris user dari GET /users
@@ -82,25 +83,13 @@ function roleNameOf(u: ApiUserRow): string {
 export async function fetchLinkableUsers(): Promise<LinkableUser[]> {
   try {
     const [usersRes, investorsRes] = await Promise.allSettled([
-      api.get("/users?page=1&limit=100&is_active=true"),
-      api.get("/investors?page=1&limit=100"),
+      fetchAllPages<ApiUserRow>("/users", { is_active: true }),
+      fetchAllPages<ApiInvestorRow>("/investors"),
     ]);
 
-    const allUsers: ApiUserRow[] =
-      usersRes.status === "fulfilled"
-        ? (usersRes.value.data?.data?.items ??
-          usersRes.value.data?.data ??
-          usersRes.value.data ??
-          [])
-        : [];
-
-    const existingInvestors: ApiInvestorRow[] =
-      investorsRes.status === "fulfilled"
-        ? (investorsRes.value.data?.data?.items ??
-          investorsRes.value.data?.data ??
-          investorsRes.value.data ??
-          [])
-        : [];
+    const allUsers = usersRes.status === "fulfilled" ? usersRes.value : [];
+    const existingInvestors =
+      investorsRes.status === "fulfilled" ? investorsRes.value : [];
 
     const linkedUserIds = new Set(
       existingInvestors

@@ -15,9 +15,9 @@ npm run lint       # eslint (flat config, next core-web-vitals + typescript)
 npx tsc --noEmit   # type-check; there is no test suite
 ```
 
-Both `package-lock.json` and `pnpm-lock.yaml` are present. Use npm unless told otherwise.
+Use npm. Only `package-lock.json` is committed. Do not add a pnpm/yarn lockfile: Vercel picks the package manager from whichever lockfile it finds, and a stale `pnpm-lock.yaml` already broke a deploy once.
 
-Env: `.env.local` needs `NEXT_PUBLIC_API_BASE_URL` (the backend base URL). All API calls go to it directly from the browser, with cookies.
+Env: `.env.local` needs `NEXT_PUBLIC_API_BASE_URL` (the backend base URL including `/api`; see `.env.example`). All API calls go to it directly from the browser, with cookies. On Vercel it must be set in the project's environment variables, since it is inlined at build time.
 
 ## Stack
 
@@ -31,6 +31,8 @@ src/
     page.tsx               login (/)
     lupa-password/, reset-password/, unauthorized/
     admin/layout.tsx       wraps every /admin page in AdminShell
+    admin/loading.tsx, admin/error.tsx   Suspense fallback + error boundary for all /admin pages
+    global-error.tsx, not-found.tsx
     admin/<section>/page.tsx   dashboard, users, investor, company, proyek,
                                investasi, laporan, settlement, activity-log, settings
   components/layout/AdminShell.tsx   sidebar, header, logout; nav config + role filtering
@@ -44,6 +46,8 @@ src/
     components/ClientGuard.tsx, KoaciLogo.tsx
     hooks/                 use-hydrated, use-pagination (client-side), use-mobile
     lib/axios.ts           api instance, 401 refresh, getErrorMessage
+    lib/fetchAllPages.ts   loops a paginated list endpoint (backend caps limit at 100)
+    lib/roleCookie.ts      set/clear the user_role shadow cookie
     lib/auth.ts            getCurrentRole, hasPermission, logout
     lib/upload.ts          presigned upload helper
     lib/format.ts          formatIDR, formatDateID, formatRelativeTime (id-ID locale)
@@ -64,8 +68,8 @@ Route folder names are Indonesian (`proyek` = projects, `investasi` = investment
 ## Auth model
 
 - The backend sets **HttpOnly auth cookies**. Every request uses `withCredentials: true`. The frontend never handles tokens.
-- On login (`src/app/page.tsx`): `POST /auth/login` → `GET /auth/me` → `useAuthStore.setAuth(user)` → set a **non-HttpOnly `user_role` "shadow cookie"**. `middleware.ts` only checks that this cookie exists, to redirect `/` ↔ `/admin/*`. It is a UX gate, not a security boundary.
-- `lib/axios.ts`: on a 401 it calls `POST /auth/refresh` once, queues concurrent requests, and retries. If the refresh fails it clears the store and hard-redirects to `/`.
+- On login (`src/app/page.tsx`): `POST /auth/login` → `GET /auth/me` → `useAuthStore.setAuth(user)` → set a **non-HttpOnly `user_role` "shadow cookie"** (`setRoleCookie` in `lib/roleCookie.ts`). `middleware.ts` only checks that this cookie exists, to redirect `/` ↔ `/admin/*`. It is a UX gate, not a security boundary.
+- `lib/axios.ts`: on a 401 it calls `POST /auth/refresh` once, queues concurrent requests, and retries. If the refresh fails it clears the store and the `user_role` cookie, then hard-redirects to `/`. 401s from `/auth/login`, `/auth/refresh` and the other credential endpoints are passed straight through without a refresh attempt, so a wrong password shows its error instead of reloading the page.
 - Roles: `superadmin`, `admin`, `bod`, `investor`, `user`. Permission keys look like `<resource>:<action>:<scope>`, for example `investors:read:any` and `projects:delete:any`. `hasPermission()` always returns true for `superadmin`.
 - Page access: wrap the page body in `<ClientGuard requirePermission="..." | requireRole="...">`. It renders the fallback until hydrated, because the auth store lives in localStorage, and shows `AccessDenied` if access is not allowed. Action buttons are gated inline with `hasPermission("x:create:any")`, etc.
 - The sidebar has its own filtering in `AdminShell` (Activity Log is shown only to `bod`, Users only to those who can read users). When adding a route, update `defaultAdminNav` and the filter there.
@@ -75,7 +79,7 @@ Route folder names are Indonesian (`proyek` = projects, `investasi` = investment
 Follow the existing list pages (for example `src/app/admin/investor/page.tsx`):
 
 - Module-level `queryOptions({ queryKey: ["admin", "<resource>"], queryFn })` + `useSuspenseQuery` inside the guarded inner component.
-- Fetch the full list (some `api.ts` functions loop over every page with `limit=100`). Then search, filter, sort and paginate on the client with `usePaginatedList(filtered, PAGE_SIZE)`.
+- Fetch the full list with `fetchAllPages(url, params)` from `shared/lib/fetchAllPages.ts` (the backend caps `limit` at 100, so a single request silently truncates). Then search, filter, sort and paginate on the client with `usePaginatedList(filtered, PAGE_SIZE)`.
 - Mutations: `useMutation`, then `onSuccess` → `queryClient.invalidateQueries({ queryKey: ["admin", ...] })`, `toast.success(...)`, close the dialog. `onError` → `toast.error(getErrorMessage(err, "..."))`.
 - Query keys use the `["admin", <resource>, ...]` prefix. Exceptions: `["investor-documents", id]` and `["permissions", ...]`. Invalidate related resources too (for example, creating an investor also invalidates `linkable-users`).
 - Create and edit share one `*FormDialog` with `mode` / `initial*` props. Forms use controlled `useState`, not react-hook-form. `shared/components/ui/form.tsx` exists but nothing uses it. Validation is done by hand inside the dialog.
@@ -100,9 +104,9 @@ Use `uploadFile(presignUrl, confirmUrl, presignPayload, confirmPayload, file)` f
 ## Known quirks / gotchas
 
 - **`middleware.ts` is deprecated in Next 16** (renamed to `proxy.ts`, see `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md`). It still works. Migrate it only when asked.
-- `app/providers.tsx` creates its own `new QueryClient()`, so the defaults in `shared/lib/queryClient.ts` (staleTime 60s, no refetch on focus, retry 1) are **not** applied.
-- Pages use `useSuspenseQuery`, but there is no `<Suspense>` boundary or `loading.tsx` under `/admin`.
-- The dashboard (`features/admin-dashboard/api.ts`) still returns **hard-coded dummy data**.
+- Query defaults live in `app/providers.tsx`: no refetch on window focus, no retry on 4xx, one retry otherwise. `staleTime` is left at 0 on purpose so pages always refetch on mount (not every mutation invalidates every related key).
+- Pages use `useSuspenseQuery`; `admin/loading.tsx` is the Suspense fallback and `admin/error.tsx` the error boundary. Its retry button calls `useQueryErrorResetBoundary().reset()` before Next's `unstable_retry()`, otherwise the failed query is not refetched.
+- The dashboard has no backend endpoint. `features/admin-dashboard/api.ts` derives stats, the 12-month chart and the activity feed from the investor / investment / project / settlement lists, skipping resources the user lacks read permission for. "Return" is `investorPortionAmount + compensationTotal` of approved settlements, bucketed by `updatedAt`.
 - `/admin/settings` is the logged-in user's own account page (profile via `PUT /users/:id`, password via `POST /auth/change-password`). The backend rejects self password changes through `PUT /users/:id`. After a profile save, refresh the auth store with `GET /auth/me`.
 - `AdminShell` renders a blank shell until hydrated, to avoid hydration mismatches from the persisted store. Use `useHydrated()`, not a `useEffect` + `setMounted` pattern.
 - `CLAUDE.md`, `AGENTS.md` and `.claude/` are listed in `.gitignore` but are already tracked.

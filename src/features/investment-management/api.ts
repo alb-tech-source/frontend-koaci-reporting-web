@@ -1,4 +1,5 @@
 import api from "@/shared/lib/axios";
+import { fetchAllPages } from "@/shared/lib/fetchAllPages";
 import { uploadFile } from "@/shared/lib/upload";
 import type {
   PaymentMethod,
@@ -162,10 +163,9 @@ function mapInvestment(raw: ApiProjectInvestment): ProjectInvestment {
 }
 
 export async function fetchInvestments(): Promise<ProjectInvestment[]> {
-  const { data } = await api.get("/project-investments", {
-    params: { page: 1, limit: 100 },
-  });
-  const items = data?.data?.items ?? data?.data ?? data ?? [];
+  const items = await fetchAllPages<ApiProjectInvestment>(
+    "/project-investments",
+  );
   return items.map(mapInvestment);
 }
 
@@ -196,11 +196,9 @@ interface ApiInvestorListItem {
 export async function fetchProjectOptions(): Promise<
   InvestmentProjectOption[]
 > {
-  const { data } = await api.get("/projects", {
-    params: { page: 1, limit: 100, status: "open" },
+  const items = await fetchAllPages<ApiProjectListItem>("/projects", {
+    status: "open",
   });
-  const items: ApiProjectListItem[] =
-    data?.data?.items ?? data?.data ?? data ?? [];
 
   return items
     .map((p) => ({
@@ -215,11 +213,9 @@ export async function fetchProjectOptions(): Promise<
 export async function fetchInvestorOptions(): Promise<
   InvestmentInvestorOption[]
 > {
-  const { data } = await api.get("/investors", {
-    params: { page: 1, limit: 100, status: "active" },
+  const items = await fetchAllPages<ApiInvestorListItem>("/investors", {
+    status: "active",
   });
-  const items: ApiInvestorListItem[] =
-    data?.data?.items ?? data?.data ?? data ?? [];
 
   return items
     .map((i) => ({

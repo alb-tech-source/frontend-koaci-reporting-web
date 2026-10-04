@@ -38,6 +38,12 @@ export interface ActivityItem {
   timestamp: string;
 }
 
+export interface DashboardData {
+  stats: DashboardStats;
+  performance: PerformancePoint[];
+  activity: ActivityItem[];
+}
+
 export interface ActivityMeta {
   icon: LucideIcon;
   tone: "brand" | "success" | "warning" | "danger" | "muted";

@@ -8,6 +8,8 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Koaci Reporting App",
   description: "Sistem pelaporan investasi syariah PT Koaci Sinergi Indonesia",
+  // Konsol internal — jangan diindeks mesin pencari
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({

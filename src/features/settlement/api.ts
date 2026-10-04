@@ -1,4 +1,5 @@
 import api from "@/shared/lib/axios";
+import { fetchAllPages } from "@/shared/lib/fetchAllPages";
 import { fetchProjects } from "@/features/project-management/api";
 import { projectStatusLabel } from "@/features/project-management/types";
 import type {
@@ -208,33 +209,6 @@ export function toSettlementPayload(
       compensation_pct: values.compensations[id] || "0",
     })),
   };
-}
-
-/** Ambil seluruh halaman endpoint list (limit backend maks. 100 per halaman). */
-async function fetchAllPages<T>(
-  url: string,
-  params: Record<string, unknown> = {},
-): Promise<T[]> {
-  const PAGE_LIMIT = 100;
-  const rows: T[] = [];
-  let page = 1;
-  let totalPages = 1;
-
-  do {
-    const { data } = await api.get(url, {
-      params: { ...params, page, limit: PAGE_LIMIT },
-    });
-    const items: T[] = Array.isArray(data?.data)
-      ? data.data
-      : (data?.data?.items ?? []);
-    rows.push(...items);
-    totalPages =
-      data?.meta?.totalPages ??
-      (items.length === PAGE_LIMIT ? page + 1 : page);
-    page += 1;
-  } while (page <= totalPages);
-
-  return rows;
 }
 
 // ----------------------------------------------------

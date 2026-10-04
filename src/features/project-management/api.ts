@@ -1,6 +1,8 @@
 import api from "@/shared/lib/axios"; // Pastikan path ini sesuai dengan instance axios Anda
+import { fetchAllPages } from "@/shared/lib/fetchAllPages";
 import { uploadFile } from "@/shared/lib/upload";
 import {
+  type ApiProject,
   type Project,
   type ProjectFormValues,
   type CompanyOption,
@@ -9,10 +11,7 @@ import {
 } from "./types";
 
 export async function fetchProjects(): Promise<Project[]> {
-  const { data } = await api.get("/projects", { params: { limit: 100 } });
-
-  const items = data?.data?.items ?? data?.data ?? data ?? [];
-
+  const items = await fetchAllPages<ApiProject>("/projects");
   return items.map(mapApiProject);
 }
 
@@ -79,15 +78,14 @@ export async function deleteProject(projectId: string): Promise<void> {
 
 // Dapatkan Opsi Company untuk Form Dropdown
 export async function fetchCompanyOptions(): Promise<CompanyOption[]> {
-  const { data } = await api.get("/companies", {
-    params: { limit: 100, status: "active" },
-  });
-  return (data?.data ?? []).map(
-    (c: { company_id: string; company_name: string }) => ({
-      companyId: c.company_id,
-      companyName: c.company_name,
-    }),
-  );
+  const companies = await fetchAllPages<{
+    company_id: string;
+    company_name: string;
+  }>("/companies", { status: "active" });
+  return companies.map((c) => ({
+    companyId: c.company_id,
+    companyName: c.company_name,
+  }));
 }
 
 // --- PROJECT DOCUMENTS API ---

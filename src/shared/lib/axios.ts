@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useAuthStore } from "../store/authStore";
+import { clearRoleCookie } from "./roleCookie";
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
@@ -18,12 +19,22 @@ const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue = [];
 };
 
+// 401 dari endpoint ini berarti kredensial/token salah, bukan sesi habis —
+// jangan dicoba refresh (kalau tidak, login gagal akan me-reload halaman).
+const AUTH_ENDPOINTS_WITHOUT_REFRESH =
+  /\/auth\/(login|refresh|register|google|forgot-password|reset-password)\b/;
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !AUTH_ENDPOINTS_WITHOUT_REFRESH.test(originalRequest.url ?? "")
+    ) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -49,6 +60,8 @@ api.interceptors.response.use(
         processQueue(refreshError, null);
         if (typeof window !== "undefined") {
           useAuthStore.getState().clearAuth();
+          // Tanpa ini middleware masih menganggap user login dan memantulkan "/" ke /admin
+          clearRoleCookie();
           window.location.href = "/";
         }
         throw refreshError;

@@ -1,5 +1,6 @@
 import api from "./axios";
 import { useAuthStore } from "../store/authStore";
+import { clearRoleCookie } from "./roleCookie";
 
 export function getCurrentUser() {
   if (typeof window === "undefined") return null;
@@ -34,7 +35,7 @@ export async function logout(redirectTo: string = "/") {
   } finally {
     useAuthStore.getState().clearAuth();
 
-    document.cookie = "user_role=; path=/; max-age=0";
+    clearRoleCookie();
 
     window.location.href = redirectTo;
   }

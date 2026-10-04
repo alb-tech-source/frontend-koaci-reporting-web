@@ -9,6 +9,7 @@ import { LoginForm, type LoginFormValues } from "@/features/auth/LoginForm";
 import { login, fetchCurrentUser } from "@/features/auth/api";
 import { useAuthStore } from "@/shared/store/authStore";
 import { getErrorMessage } from "@/shared/lib/axios";
+import { setRoleCookie } from "@/shared/lib/roleCookie";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -28,7 +29,7 @@ export default function AdminLoginPage() {
       if (profileResponse?.success && profileResponse.data) {
         setAuth(profileResponse.data.user);
 
-        document.cookie = `user_role=${profileResponse.data.role}; path=/; max-age=86400`;
+        setRoleCookie(String(profileResponse.data.role));
 
         router.push("/admin/dashboard");
       } else {

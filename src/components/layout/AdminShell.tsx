@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import {
   Bell,
   LayoutDashboard,
-  Search,
   Users,
   Activity,
   type LucideIcon,
@@ -20,7 +19,6 @@ import {
 import type { ReactNode } from "react";
 import { useHydrated } from "@/shared/hooks/use-hydrated";
 
-import { Input } from "@/shared/components/ui/input";
 import { Button } from "@/shared/components/ui/button";
 import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar";
 import {
@@ -161,28 +159,17 @@ export function AdminShell({
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/95 px-3 backdrop-blur sm:px-6">
             <SidebarTrigger className="shrink-0" />
-            <div className="relative hidden max-w-md flex-1 sm:block">
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden="true"
-              />
-              <Input
-                type="search"
-                placeholder="Cari investor..."
-                className="h-9 pl-9"
-              />
-            </div>
             <div className="ml-auto flex items-center gap-2">
               {/* <Button variant="ghost" size="icon" aria-label="Notifikasi">
                 <Bell className="h-4 w-4" />
               </Button> */}
-              <div className="hidden items-center gap-2 sm:flex">
+              <div className="flex items-center gap-2">
                 <Link
                   href="/admin/settings"
                   title="Pengaturan akun"
                   className="flex items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-muted"
                 >
-                  <div className="text-right leading-tight">
+                  <div className="hidden text-right leading-tight sm:block">
                     <p className="text-sm font-medium text-foreground">
                       {displayName}
                     </p>

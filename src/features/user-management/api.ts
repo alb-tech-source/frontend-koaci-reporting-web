@@ -1,4 +1,5 @@
 import api from "@/shared/lib/axios";
+import { fetchAllPages } from "@/shared/lib/fetchAllPages";
 import {
   mapApiUserToAppUser,
   type ApiUser,
@@ -17,8 +18,7 @@ function toPermissionIds(
 
 export async function fetchUsers(): Promise<AppUser[]> {
   try {
-    const { data } = await api.get("/users?limit=100");
-    const items: ApiUser[] = data?.data?.items ?? data?.data ?? data ?? [];
+    const items = await fetchAllPages<ApiUser>("/users");
     return items.map(mapApiUserToAppUser);
   } catch (error) {
     console.error("Gagal mengambil data dari GET /users:", error);
