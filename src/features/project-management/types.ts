@@ -4,6 +4,7 @@ export type ProjectStatus = "open" | "closed" | "target_achieved" | "cancelled";
 export interface Project {
   projectId: string;
   projectKey: string;
+  projectName: string;
   companyId: string;
   companyName?: string;
 
@@ -23,6 +24,8 @@ export interface Project {
   fundDisbursementOfficialRecord: string;
 
   status: ProjectStatus;
+  /** Tampil di halaman Jelajahi aplikasi investor (GET /projects/public) */
+  isPublic: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -72,6 +75,8 @@ export const projectStatusOptions: ProjectStatus[] = [
 export interface ApiProject {
   project_id: string;
   project_key: string;
+  project_name?: string | null;
+  is_public?: boolean;
   company_id: string;
   funding_required: string | number;
   net_margin_amount: string | number | null;
@@ -97,6 +102,7 @@ export function mapApiProject(apiData: ApiProject): Project {
   return {
     projectId: apiData.project_id,
     projectKey: apiData.project_key,
+    projectName: apiData.project_name || "",
     companyId: apiData.company_id,
     companyName: apiData.company?.company_name || "-",
     fundingRequired: Number(apiData.funding_required) || 0,
@@ -115,6 +121,7 @@ export function mapApiProject(apiData: ApiProject): Project {
     fundDisbursementOfficialRecord:
       apiData.fund_disbursement_official_record || "",
     status: apiData.status,
+    isPublic: Boolean(apiData.is_public),
     createdAt: apiData.createdAt,
     updatedAt: apiData.updatedAt,
   };
@@ -129,6 +136,9 @@ export function mapToApiProjectPayload(values: ProjectFormValues) {
     // Field wajib (divalidasi form) — paksa huruf kecil dan buang simbol dilarang
     project_key: values.projectKey.toLowerCase().replace(/[^a-z0-9._-]/g, ""),
     company_id: values.companyId,
+    ...(hasText(values.projectName)
+      ? { project_name: values.projectName.trim() }
+      : {}),
     ...(hasAmount(values.fundingRequired)
       ? { funding_required: values.fundingRequired }
       : {}),
@@ -175,5 +185,6 @@ export function mapToApiProjectPayload(values: ProjectFormValues) {
         }
       : {}),
     status: values.status,
+    is_public: values.isPublic,
   };
 }

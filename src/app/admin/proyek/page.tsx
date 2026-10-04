@@ -174,6 +174,7 @@ function ProjectsPage() {
       const matchQ =
         !q ||
         p.projectKey.toLowerCase().includes(q) ||
+        p.projectName.toLowerCase().includes(q) ||
         (p.companyName ?? "").toLowerCase().includes(q);
       const matchStatus = statusFilter === "all" || p.status === statusFilter;
       const matchCompany =
@@ -322,6 +323,7 @@ function ProjectsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Kode Proyek</TableHead>
+                    <TableHead>Nama Proyek</TableHead>
                     <TableHead>Perusahaan</TableHead>
                     <TableHead>Target Dana</TableHead>
                     <TableHead>Dana Terkumpul</TableHead>
@@ -332,7 +334,7 @@ function ProjectsPage() {
                 <TableBody>
                   {pageItems.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-64">
+                      <TableCell colSpan={7} className="h-64">
                         <EmptyStateGeneral
                           title="Belum ada proyek"
                           description="Tambahkan proyek pembiayaan pertama untuk mulai mengelola pendanaan."
@@ -368,6 +370,9 @@ function ProjectsPage() {
                             <div className="text-xs text-muted-foreground">
                               {formatDateID(p.createdAt)}
                             </div>
+                          </TableCell>
+                          <TableCell className="text-sm text-foreground">
+                            {p.projectName || "-"}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             {p.companyName ?? p.companyId}

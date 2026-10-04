@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/select";
+import { Switch } from "@/shared/components/ui/switch";
 import {
   Tabs,
   TabsContent,
@@ -36,6 +37,7 @@ import { projectStatusLabel, projectStatusOptions } from "./types";
 
 const emptyValues: ProjectFormValues = {
   projectKey: "",
+  projectName: "",
   companyId: "",
   fundingRequired: 0,
   netMarginAmount: 0,
@@ -50,6 +52,7 @@ const emptyValues: ProjectFormValues = {
   urlTransactionFolder: "",
   fundDisbursementOfficialRecord: "",
   status: "open",
+  isPublic: false,
 };
 
 function toValues(project: Project): ProjectFormValues {
@@ -151,6 +154,15 @@ export function ProjectFormDialog({
                   }
                 />
               </Row>
+              <Row label="Nama Proyek" htmlFor="projectName">
+                <Input
+                  id="projectName"
+                  value={values.projectName}
+                  maxLength={150}
+                  placeholder="Pembiayaan Gudang Distribusi"
+                  onChange={(e) => set("projectName", e.target.value)}
+                />
+              </Row>
               <Row label="Perusahaan *">
                 <Select
                   value={values.companyId}
@@ -185,6 +197,23 @@ export function ProjectFormDialog({
                   </SelectContent>
                 </Select>
               </Row>
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="projectIsPublic" className="text-sm">
+                    Tampilkan di Jelajahi
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Nama proyek, perusahaan, kebutuhan dana, dan status terlihat
+                    oleh semua akun aplikasi investor, termasuk yang belum
+                    diverifikasi.
+                  </p>
+                </div>
+                <Switch
+                  id="projectIsPublic"
+                  checked={values.isPublic}
+                  onCheckedChange={(c) => set("isPublic", c)}
+                />
+              </div>
             </TabsContent>
 
             <TabsContent value="keuangan" className="mt-4">

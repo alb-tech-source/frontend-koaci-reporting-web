@@ -52,6 +52,10 @@ export function ProjectDetailSheet({
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Field label="Project Key" value={project.projectKey} mono />
                   <Field
+                    label="Nama Proyek"
+                    value={project.projectName || "-"}
+                  />
+                  <Field
                     label="Perusahaan"
                     value={project.companyName ?? project.companyId}
                   />
@@ -66,6 +70,10 @@ export function ProjectDetailSheet({
                   <Field
                     label="Dibuat"
                     value={formatDateID(project.createdAt)}
+                  />
+                  <Field
+                    label="Tampil di Jelajahi"
+                    value={project.isPublic ? "Ya" : "Tidak"}
                   />
                 </div>
               </Section>

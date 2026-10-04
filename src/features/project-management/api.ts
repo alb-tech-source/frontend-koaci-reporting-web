@@ -67,7 +67,11 @@ export async function updateProject(
   projectId: string,
   values: ProjectFormValues,
 ): Promise<Project> {
-  const payload = mapToApiProjectPayload(values);
+  const payload = {
+    ...mapToApiProjectPayload(values),
+    // Saat edit selalu dikirim (string kosong = hapus nama); backend menolak null
+    project_name: values.projectName.trim(),
+  };
   const { data } = await api.put(`/projects/${projectId}`, payload);
   return mapApiProject(data?.data);
 }

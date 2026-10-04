@@ -103,6 +103,8 @@ const buildFormFromCompany = (data: Company): Partial<NewCompanyInput> => {
     director_name: normalizeCompanyField(data.direktorNama),
     director_phone: normalizeCompanyField(data.direktorTelepon),
     company_address: normalizeCompanyField(data.alamat),
+    // Wajib ikut terkirim saat edit: PUT /companies tanpa status mengembalikannya ke "active"
+    status: data.status,
   };
 
   // Field opsional hanya masuk state bila ada isinya — nilai kosong tidak pernah dikirim

@@ -1,7 +1,8 @@
 // "Shadow cookie" non-HttpOnly yang hanya dibaca middleware untuk redirect / ↔ /admin.
 // Bukan batas keamanan — otorisasi sebenarnya tetap di backend.
 const ROLE_COOKIE = "user_role";
-const ONE_DAY_SECONDS = 86400;
+// Sama dengan umur refresh token backend; diperpanjang setiap refresh berhasil
+const SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
 
 function cookieAttributes(maxAge: number): string {
   const secure = window.location.protocol === "https:" ? "; Secure" : "";
@@ -10,7 +11,7 @@ function cookieAttributes(maxAge: number): string {
 
 export function setRoleCookie(role: string) {
   if (typeof window === "undefined") return;
-  document.cookie = `${ROLE_COOKIE}=${encodeURIComponent(role)}; ${cookieAttributes(ONE_DAY_SECONDS)}`;
+  document.cookie = `${ROLE_COOKIE}=${encodeURIComponent(role)}; ${cookieAttributes(SESSION_MAX_AGE_SECONDS)}`;
 }
 
 export function clearRoleCookie() {
