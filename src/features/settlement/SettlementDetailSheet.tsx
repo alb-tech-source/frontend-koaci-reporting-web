@@ -105,9 +105,13 @@ export function SettlementDetailSheet({
       action === "approve" ? approveSettlement(id) : rejectSettlement(id),
     onSuccess: (_, { action }) => {
       refresh();
+      if (action === "approve") {
+        // Backend otomatis mengubah status project menjadi target_achieved
+        queryClient.invalidateQueries({ queryKey: ["admin", "projects"] });
+      }
       toast.success(
         action === "approve"
-          ? "Settlement disetujui. Hasil investor kini final."
+          ? "Settlement disetujui. Hasil investor final dan status proyek menjadi Target Tercapai."
           : "Settlement ditolak dan dikembalikan ke admin untuk diperbaiki.",
       );
       setDecision(null);
@@ -330,7 +334,12 @@ export function SettlementDetailSheet({
                     {settlement?.projectKey}
                   </span>{" "}
                   akan dikunci dan tidak dapat diubah atau dihapus lagi. Hasil
-                  bagi hasil akan menjadi final dan terlihat oleh investor.
+                  bagi hasil akan menjadi final dan terlihat oleh investor, dan
+                  status proyek otomatis berubah menjadi{" "}
+                  <span className="font-medium text-foreground">
+                    Target Tercapai
+                  </span>
+                  .
                 </>
               ) : (
                 <>
